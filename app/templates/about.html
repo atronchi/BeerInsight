@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block head %}
+
+<style type='text/css'>
+    /* GLOBAL STYLES
+
+    /* CUSTOMIZE THE CAROUSEL
+    -------------------------------------------------- */
+
+    /* Carousel base class */
+    .carousel { position:relative; height:100%; top:0; margin:0; padding:0; }
+    .carousel-inner > .item > img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      min-width: 100%;
+      height: 100%;
+    }
+    /* Declare heights because of positioning of img element */
+    .carousel .item {
+      height: 440px;
+      padding: 20px;
+    }
+    /* Since positioning the image, we need to help out the caption */
+    .carousel-caption { z-index: 10; }
+
+
+</style>
+
+<script type="text/javascript">
+    // from: http://stackoverflow.com/questions/17682771/several-bootstrap-carousels-keyboard-controls
+    jQuery(document).bind('keyup', function(e) {
+        if (e.which==39) {
+            jQuery('#myCarousel').carousel('next');
+        } else if (e.which==37) {
+            jQuery('#myCarousel').carousel('prev');
+        }
+    });
+</script>
+
+{% endblock %}
+
+
+{% block content %}
+
+    <!-- Carousel
+    ================================================== -->
+    <div id="myCarousel" class="carousel slide">
+      <!-- Indicators -->
+      <ol class="carousel-indicators">
+        <li data-target="#myCarousel" data-slide-to="0" class="active"></li>
+        {% for i in idx %}
+        <li data-target="#myCarousel" data-slide-to="{{i+1}}"></li>
+        {% endfor %}
+      </ol>
+      <div class="carousel-inner"> 
+
+        <div class="item active">
+          <div class="container">
+            <div class="carousel-caption">
+              <h1>Where did BeerSuggest come from?</h1>
+              <p>
+                BeerSuggest was developed at Insight Data Science as a demonstration of just a few of the many useful and exciting things that can be accomplished in a data-intensive world.
+              </p>
+              <!-- <p><a class="btn btn-large btn-primary" href="#">Hire the author</a></p> -->
+            </div>
+          </div>
+        </div>
+
+        {% for slide in slides %}
+        <div class="item">
+          <div class="container" style="text-align:center;">
+            <img src="{{slide}}" style="max-height:100%;">
+          </div>
+        </div>
+        {% endfor %}
+
+      </div><!-- /carousel-inner -->
+      <a class="left carousel-control" href="#myCarousel" data-slide="prev"><span class="glyphicon glyphicon-chevron-left"></span></a>
+      <a class="right carousel-control" href="#myCarousel" data-slide="next"><span class="glyphicon glyphicon-chevron-right"></span></a>
+    </div><!-- /carousel -->
+
+
+{% endblock %}
+
+
+{% block scripts %}
+    <script src="static/bootstrap-3.0.0/assets/js/holder.js"></script>
+{% endblock %}
+
