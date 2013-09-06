@@ -24,13 +24,32 @@ def contact():
         title = 'BeerSuggest'
         )
 
+
+# import pickled ratebeer data
+rb_file = 'scrape_ratebeer.pklz'
+import pickle,gzip
+with gzip.open(rb_file,'rb') as f:
+    loc_data=pickle.load(rb_file)
+
 @app.route('/maps')
 def maps():
     return render_template("google-maps.html",
         title = 'BeerSuggest'
+       ,locations = ...
         )
 
-@app.route('/test')
+from flask import flash, redirect
+from forms import LoginForm
+@app.route('/login', methods = ['GET', 'POST'])
+def login():
+    form = LoginForm()
+    return render_template('login.html', 
+        title = 'Sign In',
+        form = form)
+
+
+# views for testing/debugging
+@app.route('/test') 
 def test():
     return render_template("divtest.html",
         title = 'BeerSuggest'

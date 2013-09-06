@@ -11,7 +11,7 @@
       src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD7S-5RDyg0gO2c5K7qWN1MGXU2Pxukb74&sensor=false">
     </script>
     <script type="text/javascript">
-      function initialize() {
+        function initialize() {
         var mapOptions = {
           center: new google.maps.LatLng(37.3894, -122.0819), // convention is N and E
           zoom: 12,
@@ -19,8 +19,39 @@
         };
         var map = new google.maps.Map(document.getElementById("map-canvas"),
             mapOptions);
-      }
-      google.maps.event.addDomListener(window, 'load', initialize);
+        }
+        google.maps.event.addDomListener(window, 'load', initialize);
+
+
+        // want to add markers at beer locations
+        // https://developers.google.com/maps/documentation/javascript/overlays#Markers
+
+        // from https://developers.google.com/maps/documentation/flash/services?csw=1#Geocoding
+        private function doGeocode(event:GeocodingEvent):void {
+          var geocoder:ClientGeocoder = new ClientGeocoder();
+          geocoder.addEventListener(GeocodingEvent.GEOCODING_SUCCESS,
+              function(event:GeocodingEvent):void {
+                var placemarks:Array = event.response.placemarks;
+                if (placemarks.length > 0) {
+                  map.setCenter(placemarks[0].point);
+                  var marker:Marker = new Marker(placemarks[0].point);
+                  map.addOverlay(marker);
+                  marker.addEventListener(MapEvent.CLICK,
+                      function(event:MapEvent):void {
+                        marker.openInfoWindow(new InfoWindowOptions({
+                          title: "Geocoded Result",
+                          content: placemarks[0[]].address
+                        }));
+                      });
+                }
+              });
+          geocoder.addEventListener(GeocodingEvent.GEOCODING_FAILURE,
+                function(event:GeocodingEvent):void {
+                  trace("Geocoding failed");
+                });
+          geocoder.geocode(address.text);
+        }
+        
     </script>
 {% endblock %}
 
