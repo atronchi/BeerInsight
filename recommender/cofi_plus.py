@@ -4,6 +4,9 @@
 # Coursera ml-003 machine learning taught by Andrew Ng
 # written by Alexander Tronchin-James 2013-05-31
 # original path /home/alex/Google Drive/coursera/ml-003/ex8
+
+# possibly uses an alternating least squares weighted regularization recommender?
+
 import os
 import numpy as np
 import pylab as pl
@@ -34,8 +37,8 @@ def loadData(fnam='result_clean.pklz'):
 
     return result
 
-
-result = loadData() # this can take 15min so only load if not already in memory
+global result
+result = loadData()
 
 Y = result['ratings']
 R = result['israted']
@@ -44,13 +47,18 @@ beers = result['beers']
 user_nrev = result['user_nrev']
 beer_nrev = result['beer_nrev']
 
-#  Y is a 1682x943 matrix, containing ratings (1-5) of 1682 movies on 
-#  943 users
+num_users = len(users)
+num_beers = len(beers)
+num_features = 10 # arbitrarily for now...
+shapes = (num_users,num_beers,num_features)
+
+#  Y is a num_users x num_beers matrix, containing ratings (1-5) of 5132 beers from 
+#  4780 users
 #
-#  R is a 1682x943 matrix, where R(i,j) = 1 if and only if user j gave a
+#  R is a num_users x num_beers matrix, where R(i,j) = 1 if and only if user j gave a
 #  rating to movie i
 
-#  From the matrix, we can compute statistics like average rating for a beer
+#  From the matrix, we can compute statistics like average rating for a beer ...
 def avgRating(i=0):
     r = np.array( R[:,i].todense() ).flatten()
     b = beers[i][0]+', '+beers[i][1]
@@ -64,29 +72,11 @@ def avgRating(i=0):
 avgRating(0)
 
 
-'''
 ## ============ Part 2: Collaborative Filtering Cost Function ===========
 #  You will now implement the cost function for collaborative filtering.
 #  To help you debug your cost function, we have included set of weights
 #  that we trained on that. Specifically, you should complete the code in 
 #  cofiCostFunc.m to return J.
-
-#  Load pre-trained weights (X, Theta, num_users, num_movies, num_features)
-matdat2=loadmat('ex8_movieParams.mat')
-X = np.matrix(matdat2['X'])
-Theta = np.matrix(matdat2['Theta'])
-
-
-#  Reduce the data set size so that this runs faster
-num_users = 4
-num_movies = 5
-num_features = 3
-shapes = (num_users,num_movies,num_features)
-
-X = X[:num_movies,:num_features]
-Theta = Theta[:num_users,:num_features]
-Y = Y[:num_movies,:num_users]
-R = R[:num_movies,:num_users]
 
 # Define cost function
 def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):

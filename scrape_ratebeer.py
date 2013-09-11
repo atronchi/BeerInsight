@@ -27,7 +27,7 @@ def parse_area(url):
             loc_addr = c.split('border=0>')[1].split('<')[0].strip()
 
             print ' parsing shop: '+loc_name, 
-            (loc_addr2,beers) = parse_loc(loc_url,loc_id)
+            (loc_addr2,loc_hours,beers) = parse_loc(loc_url,loc_id)
             if loc_addr2 != u'': loc_addr = loc_addr2
             print ', {0} beers here'.format(len(beers))
             if loc_name == '': loc_name=loc_addr
@@ -46,6 +46,7 @@ def parse_area(url):
                 'id':loc_id,
                 'type':loc_type,
                 'tel':loc_tel,
+                'hours':loc_hours,
                 'rb_score':loc_score,
                 'addr':loc_addr,
                 'latlng':loc_latlng,
@@ -61,7 +62,10 @@ def parse_loc(loc_url,loc_id):
     loc_con = unicode(loc.content,loc.encoding).split('\r\n')
     beers = []
     loc_addr = u''
+    loc_hours = u''
     for l in loc_con:
+        if 'Hours:' in l:
+            loc_hours = l.split('Hours:')[1].split('<')[0].strip()
         if '<br>Type:' in l:
             loc_addr = l.split('<br>Type:')[1].split('<br><br>')[1].split('<a href')[0].replace('<br>',', ').strip()
         if '<a title=' in l:
@@ -70,7 +74,7 @@ def parse_loc(loc_url,loc_id):
             mb = requests.get('http://www.ratebeer.com/plaCes/showplacebeers.asp?pid='+loc_id)
             mc = unicode(mb.content,mb.encoding)
             beers += parse_beerln(mc)
-    return (loc_addr,beers)
+    return (loc_addr,loc_hours,beers)
     
 
 def parse_beerln(ln):

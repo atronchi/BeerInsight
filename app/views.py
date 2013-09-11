@@ -28,12 +28,12 @@ def contact():
 # Map of beer locations
 
 import cPickle,gzip,json
-with gzip.open('scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
+with gzip.open('scraper/scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
 @app.route('/rb_sanjose')
 def rd_sanjose():
     return json.dumps(loc_data['locations'])
 
-with gzip.open('gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
+with gzip.open('app/gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 @app.route('/maps')
 def maps():
     return render_template("google-maps.html",

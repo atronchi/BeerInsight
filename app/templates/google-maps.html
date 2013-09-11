@@ -19,6 +19,7 @@
               zoom: 12,
               mapTypeId: google.maps.MapTypeId.ROADMAP
             };
+
             var map = new google.maps.Map(document.getElementById("map-canvas"),
                 mapOptions);
 
@@ -29,6 +30,7 @@
                       var contentString = '<div><a href="'+this.url+'"><h1>'+this.name+'</h1></a><br>' +
                                           'address: '+this.addr+'<br>' + 
                                           'telephone: '+this.tel+'<br>' + 
+                                          'hours: '+this.hours+'<br>' +
                                           'beers:<ul>';
                       jQuery.each(this.beers, function(){ contentString += 
                                           '<li><a href="'+this.item.url+'">'+this.item.brewery+', '+this.item.name+'</a><br>' +
