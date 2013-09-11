@@ -25,19 +25,24 @@ def contact():
         )
 
 
-# import pickled ratebeer data
-rb_file = 'scrape_ratebeer.pklz'
-import pickle,gzip
-with gzip.open(rb_file,'rb') as f:
-    loc_data=pickle.load(rb_file)
+# Map of beer locations
 
+import cPickle,gzip,json
+with gzip.open('scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
+@app.route('/rb_sanjose')
+def rd_sanjose():
+    return json.dumps(loc_data['locations'])
+
+with gzip.open('gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 @app.route('/maps')
 def maps():
     return render_template("google-maps.html",
-        title = 'BeerSuggest'
-       ,locations = ...
+        title = 'BeerSuggest',
+        key = gapi['key']
         )
 
+
+# Forms for login and user beer preference selection
 from flask import flash, redirect
 from forms import LoginForm
 @app.route('/login', methods = ['GET', 'POST'])
