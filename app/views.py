@@ -43,6 +43,7 @@ def maps():
 
 
 # Forms for login and user beer preference selection
+# see http://blog.miguelgrinberg.com/post/the-flask-mega-tutorial-part-iii-web-forms
 from flask import flash, redirect
 from forms import LoginForm
 @app.route('/login', methods = ['GET', 'POST'])
