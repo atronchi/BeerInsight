@@ -22,48 +22,41 @@
             var map = new google.maps.Map(document.getElementById("map-canvas"),
                 mapOptions);
 
-              jQuery.getJSON('/rb_sanjose', function(data) {
-                  var t_delay = 0;
+            jQuery.getJSON('/rb_sanjose', function(data) {
                   jQuery.each(data, function(){ 
-                      var addr = this.addr;
+                      //map.setCenter(results[0].geometry.location); // don't need to reset the map center
+                      //console.log('loc: '+this.latlng[0]+','+this.latlng[1]);
+                      var contentString = '<div><a href="'+this.url+'"><h1>'+this.name+'</h1></a><br>' +
+                                          'address: '+this.addr+'<br>' + 
+                                          'telephone: '+this.tel+'<br>' + 
+                                          'beers:<ul>';
+                      jQuery.each(this.beers, function(){ contentString += 
+                                          '<li><a href="'+this.item.url+'">'+this.item.brewery+', '+this.item.name+'</a><br>' +
+                                          this.item.style+', RB score='+this.item.rb_score+', ' +
+                                          '<i>last seen '+this.date+'</i></li>'; });
+                      contentString += '</ul></div>';
+                      var infowindow = new google.maps.InfoWindow({
+                          content: contentString
+                          });
+                      var marker = new google.maps.Marker({
+                          //position: this.latlng,
+                          position: new google.maps.LatLng(this.latlng[0], this.latlng[1]),
+                          title: this.name,
+                          icon: { 
+                            // for more options: https://developers.google.com/maps/documentation/javascript/overlays#Symbols
+                            path:google.maps.SymbolPath.CIRCLE,
+                            scale:3,fillColor:'red',fillOpacity:1,strokeColor:'black',strokeWeight:1
+                          },
+                          map: map
+                          }); 
+                      google.maps.event.addListener(marker, 'click', function() {
+                          infowindow.open(map,marker);
+                          });
+                      }); // end each
+                  }); // end getJSON
+        } // end initialize
 
-                      // delay between each request to avoid hitting the google API rate limit of 10/s
-                      // https://developers.google.com/maps/documentation/business/faq?csw=1#usage_limits
-                      setTimeout(function(){
-                          geocoder.geocode( {'address':addr}, function(results, status) {
-                            if (status == google.maps.GeocoderStatus.OK) {
-                              // map.setCenter(results[0].geometry.location); // don't need to reset the map center
-                             
-                              var marker = new google.maps.Marker({
-                                  position: results[0].geometry.location,
-                                  //position: new google.maps.LatLng(-25.363882, 131.044922),
-                                  icon: { 
-                                    // for more options: https://developers.google.com/maps/documentation/javascript/overlays#Symbols
-                                    path: google.maps.SymbolPath.CIRCLE,
-                                    scale: 10
-                                  },
-                                  //draggable: true,
-                                  map: map
-                              }); 
-                              /*var marker = new google.maps.Marker({
-                                  map: map,
-                                  position: results[0].geometry.location
-                              });*/
-                              console.log('Geocode success (' + status + '): ' + addr );
-                            } else {
-                              console.log('Geocode failed (' + status + '): ' + addr );
-                            }
-                          }); // end geocoder
-                      },t_delay); // end setTimeout
-                      t_delay += 1000; 
-                  }); // end each
-              }); // end getJSON
-        }
         google.maps.event.addDomListener(window, 'load', initialize);
-
-        // want to add markers at locations
-        // https://developers.google.com/maps/documentation/javascript/overlays#Markers
-
 
     </script>
 
