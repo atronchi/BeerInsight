@@ -40,7 +40,7 @@ def loadData(fnam='result_clean.pklz'):
 global result
 result = loadData()
 
-Y = result['ratings']
+Y = result['ratings'] # convert from 0-5 (in-halfsteps) to 0-10 ratings
 R = result['israted']
 users = result['users']
 beers = result['beers']

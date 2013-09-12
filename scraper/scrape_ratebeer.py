@@ -214,7 +214,7 @@ for l in enumerate(locations):
     if del_idxs != []: # delete any unlisted beers
         locations[l[0]]['beers'] = [i for j, i in enumerate(l[1]['beers']) if j not in del_idxs]
 
-result = {'area_url':url,'locations':locations}
+result = {'area_url':url,'locations':locations,'beers':beers}
 saveData(result)
 
 
