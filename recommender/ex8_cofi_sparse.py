@@ -158,9 +158,7 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     # http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
     #XThmY = X*Theta.T - Y
     #XThsp = sp.coo_matrix( (sparse_mult(X,Theta.T,coords),coords), Y.shape ).tocsr()
-    XThsp = sparse_mult(X,Theta.T,coords)
-    XThmY = XThsp - Y
-    XThmYR= R.multiply(XThmY) # multiply method of sparse matrices is element-wise
+    XThmYR = sparse_mult(X,Theta.T,coords) - Y
 
     J = 1/2. *(XThmYR.data**2).sum()
     J = J + Lambda/2.*( (np.array(Theta)**2).sum() + (np.array(X)**2).sum() )
@@ -182,15 +180,25 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     J = float(J)
     return (J,grad)
 
-# Handy snippet from http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
+# cython-ized version
 def sparse_mult(a, b, coords):
-    #rows, cols = zip(*coords) # e.g. use coo_matrix.row and .col for coords
+    from sparse_mult_c import sparse_mult_c
+    rows, cols = coords
+    a = np.array(a)
+    b = np.array(b)
+    C = np.zeros(rows.shape[0])
+    sparse_mult_c(a,b,rows,cols,C)
+    return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
+
+# Handy snippet from http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
+def sparse_mult_notreally(a, b, coords):
     rows, cols = coords
     rows, r_idx = np.unique(rows, return_inverse=True)
     cols, c_idx = np.unique(cols, return_inverse=True)
-    C = np.array(np.dot(a[rows, :], b[:, cols]))
-    #return C[r_idx,c_idx]
+    C = np.array(np.dot(a[rows, :], b[:, cols])) # this operation is not sparse
     return sp.coo_matrix( (C[r_idx,c_idx],coords), (a.shape[0],b.shape[1]) )
+
+
 
 
 #  Evaluate cost function
