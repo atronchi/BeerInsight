@@ -61,11 +61,12 @@ def beers():
     return json.dumps(BA_beers)
 
 
-@app.route('/maps')
+@app.route('/maps', methods=['GET','POST'])
 def maps():
     return render_template("maps.html",footer_color='black',
         key = gapi['key'],
-        form = UserInputForm())
+        form = UserInputForm()
+        )
 
 
 # views for testing/debugging

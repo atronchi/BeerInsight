@@ -96,6 +96,35 @@
           remote:beer_url
         });
       };
+
+      var myRatings = [];
+      function addRating() {
+        myRatings.push( [
+            $('#brewer').val(),
+            $('#beer').val(),
+            $('#rating').val()
+            ] );
+        printRatings();
+      };
+      function delRating(i) {
+        myRatings.splice(i,1);
+        printRatings();
+      };
+      function printRatings() {
+        if (myRatings.length > 0) {
+            var ratings_html = "<table class='table' style='font-size:10pt;'><tr><td>Brewery</td><td>Beer name</td><td>my rating</td><td></td></tr>";
+            var i = 0;
+            $.each(myRatings, function(data) {
+                ratings_html += '<tr> <td>'+this[0]+'</td><td>'+this[1]+'</td><td>'+this[2]+'</td>' +
+                                '<td><a href="#" onclick="delRating('+i+')">X</a></td> </tr>';
+                i+=1;
+            });
+            ratings_html += '</table>';
+            $("#ratings_table").html(ratings_html);
+        } else {
+            $("#ratings_table").html("");
+        }
+      };
     </script>
 
 {% endblock %}
@@ -104,22 +133,26 @@
 {% block content %}
     <div id="map-canvas"></div>
 
-    <div id="form-canvas" class="jumbotron">
+    <div id="form-canvas" class="jumbotron" style="overflow:auto; max-height:75%;">
         <div class='closer btn'><a href='#' onClick="document.getElementById('form-canvas').style.visibility='hidden';">X</a></div>
-        <form action="" method="post" name="login">
+        <form action="javascript:alert('Login not yet implemented.');" method="post" name="login_form">
             {{form.hidden_tag()}}
-            <p> Please login:<br>
+            <p> Please login:
                 <input id="user" name="user" size="20" type="text" class='typeahead' value="username"> 
                 <input class="btn btn-primary" type="submit" value="Sign In">
             </p>
+        </form>
+        <form action="javascript:addRating();" method="post" name="rating_form">
             <p>
                 Please enter your ratings:<br>
                 <input id="brewer" name="brewer" size="20" type="text" class="typeahead" value="Brewer" onblur='prefetchBeer();'> 
                 <input id="beer" name="beer" size="20" type="text" class="typeahead" value="Beer"> 
                 <input id="rating" name="rating" size="1" type="text" class="typeahead" value="10">
-                <input class="btn btn-primary" type="submit" value="Submit rating">
+                <input class="btn btn-primary" type="submit" value="Submit rating" style='visibility:hidden;'>
+                <!-- <a href='#' onclick='addRating();' class="btn btn-primary">Submit rating</a> -->
             </p>
-            <p><input class="btn btn-primary" type="submit" value="Recommend"></p>
+            <div id='ratings_table'></div>
+            <p><a href='#' class="btn btn-primary" onclick="alert('Recommend from form not yet implemented.');">Recommend</a></p>
         </form>
     </div>
 
