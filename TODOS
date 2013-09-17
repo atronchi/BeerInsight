@@ -1,20 +1,12 @@
-Complete recommender
-    build R matrix
-    clean single review users and single review beers from ratings matrix and R matrix
-    extras: validation - compare algorithm with netflix challenge
-
-Complete and test ratebeer scraper
-    geocode addresses
-    parse each beer for brewery and beer name
-    pickle results!
-
-
 Connect recommended beers to nearby locations
     map between RB and BA names
-    plot on google maps
 
 Create webform and db connections for user login and getting new user preferences
-    Use google login? https://developers.google.com/accounts/
+    with typeahead.js
+    use google login? https://developers.google.com/accounts/
+
+Complete recommender
+    extras: validation - compare algorithm with netflix challenge
 
 Extras:
     Include relational maps to visualize recommended beers

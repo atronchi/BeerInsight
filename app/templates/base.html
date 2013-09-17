@@ -7,11 +7,7 @@
     <meta name="author" content="">
     <link rel="shortcut icon" href="static/bootstrap-3.0.0/assets/ico/favicon.png">
 
-    {% if title %}
-        <title>{{title}}</title>
-    {% else %}
-        <title>No title specified.</title>
-    {% endif %}
+    <title>BeerInsight</title>
 
     <!-- Bootstrap core CSS -->
     <link href="static/bootstrap-3.0.0/dist/css/bootstrap.css" rel="stylesheet">
@@ -49,7 +45,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="">{{title}}</a>
+          <a class="navbar-brand" href="">BeerInsight</a>
         </div>
 
         <div class="collapse navbar-collapse">
@@ -89,12 +85,13 @@
 
     <div class="container content">
 
-        {% block content %}{% endblock %}
-
-        <footer style="position:absolute; bottom:0; right:0; text-align:right; z-index:15; color:#fff;">
-                <a href='http://insightdatascience.com/'><img src="static/img/logowhite.png" style="height:50px;"></a><br>
+        <div id="footer" style="position:absolute; bottom:12px; right:5px; text-align:right; z-index:15; color:{{footer_color}};font-size:8pt;">
+                <a href='http://insightdatascience.com/'><img src="static/img/logo{{footer_color}}.png" style="height:50px;"></a><br>
                 &copy; Alexander Tronchin-James, Insight Data Science 2013
-        </footer>
+        </div>
+
+        {% block content %}
+        {% endblock %}
 
     </div><!-- /.container -->
 

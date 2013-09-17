@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <!-- see: https://code.google.com/apis/console/?pli=1#project:237949820141:access -->
+    <link href="static/typeahead.js/typeahead.css" rel="stylesheet">
+
+    <style type="text/css">
+      html { height: 100% }
+      body { height: 100%; margin: 0; padding: 0 }
+      #map-canvas { width:100%; height:100%; z-index:0; }
+      #form-canvas { 
+        z-index:10; 
+        position:absolute; top:10px; left:30px; 
+        background-color:rgba(0,0,0,0.9);
+        color:#fff;
+        -moz-box-shadow: 10px 10px 15px rgba(0,0,0,.7);
+        -webkit-box-shadow: 10px 10px 15px rgba(0,0,0,.7);
+        box-shadow: 10px 10px 15px rgba(0,0,0,.7);
+      }
+      #form-canvas .closer { color:#fff; position:absolute; top:10px; right:10px; }
+    </style>
+    <script type="text/javascript"
+      key='AIzaSyD7S-5RDyg0gO2c5K7qWN1MGXU2Pxukb74';
+      src="https://maps.googleapis.com/maps/api/js?key={{gapi_key}}&sensor=false">
+    </script>
+    <script type="text/javascript">
+        function initialize() {
+            geocoder = new google.maps.Geocoder();
+            var mapOptions = {
+              center: new google.maps.LatLng(37.3894, -122.0819), // convention is N and E
+              zoom: 12,
+              mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+
+            var map = new google.maps.Map(document.getElementById("map-canvas"),
+                mapOptions);
+
+            jQuery.getJSON('/rb_sanjose', function(data) {
+              jQuery.each(data, function(){ 
+                  //map.setCenter(results[0].geometry.location); // don't need to reset the map center
+                  //console.log('loc: '+this.latlng[0]+','+this.latlng[1]);
+                  var contentString = '<div><a href="'+this.url+'"><h1>'+this.name+'</h1></a><br>' +
+                                      'address: '+this.addr+'<br>' + 
+                                      'telephone: '+this.tel+'<br>' + 
+                                      'hours: '+this.hours+'<br>' +
+                                      'beers:<ul>';
+                  jQuery.each(this.beers, function(){ contentString += 
+                                      '<li><a href="'+this.item.url+'">'+this.item.brewery+', '+this.item.name+'</a><br>' +
+                                      this.item.style+', RB score='+this.item.rb_score+', ' +
+                                      '<i>last seen '+this.date+'</i></li>'; });
+                  contentString += '</ul></div>';
+                  var infowindow = new google.maps.InfoWindow({
+                      content: contentString
+                      });
+                  var marker = new google.maps.Marker({
+                      //position: this.latlng,
+                      position: new google.maps.LatLng(this.latlng[0], this.latlng[1]),
+                      title: this.name,
+                      icon: { 
+                        // for more options: https://developers.google.com/maps/documentation/javascript/overlays#Symbols
+                        path:google.maps.SymbolPath.CIRCLE,
+                        scale:3,fillColor:'red',fillOpacity:1,strokeColor:'black',strokeWeight:1
+                      },
+                      map: map
+                      }); 
+                  google.maps.event.addListener(marker, 'click', function() {
+                      infowindow.open(map,marker);
+                      });
+                  }); // end each
+              }); // end getJSON
+                  
+            prefetchTypeahead()      
+        } // end initialize
+
+        google.maps.event.addDomListener(window, 'load', initialize);
+
+    </script>
+
+    <script type="text/javascript" src="static/typeahead.js/typeahead.js"></script>
+    <script type="text/javascript">
+      function prefetchTypeahead() {
+        $('#brewer').typeahead({                                
+          name: 'brewer',
+          prefetch:"{{url_for('brewers')}}",
+          remote:"{{url_for('brewers')}}?q=%QUERY"
+        });
+        $('#beer').typeahead({
+          name: 'beer',
+          remote:"{{url_for('beers')}}"
+        });
+      };
+    </script>
+
+{% endblock %}
+
+
+{% block content %}
+    <div id="map-canvas"></div>
+
+    <div id="form-canvas" class="jumbotron">
+        <div class='closer btn'><a href='#' onClick="document.getElementById('form-canvas').style.visibility='hidden';">X</a></div>
+        <form action="" method="post" name="login">
+            {{form.hidden_tag()}}
+            <p> Please login:<br>
+                <input id="user" name="user" size="20" type="text" class='typeahead' value="username"> 
+                <input class="btn btn-primary" type="submit" value="Sign In">
+            </p>
+            <p>
+                Please enter your ratings:<br>
+                <input id="brewer" name="brewer" size="20" type="text" class="typeahead" value="Brewer"> 
+                <input id="beer" name="beer" size="20" type="text" class="typeahead" disabled="disabled" value="Beer"> 
+                <input id="rating" name="rating" size="1" type="text" class="typeahead" value="10">
+                <input class="btn btn-primary" type="submit" value="Submit rating">
+            </p>
+            <p><input class="btn btn-primary" type="submit" value="Recommend"></p>
+        </form>
+    </div>
+
+    <div class='btn btn-primary' style='position:absolute; bottom:20px; left:20px; background:rgba(0,0,255,.9); border:0;'>
+        <a href='#' style='color:#fff;decoration:none;'
+          onClick="document.getElementById('form-canvas').style.visibility='visible';">
+            Data entry
+        </a>
+    </div>
+{% endblock %}
+
+
+
+
