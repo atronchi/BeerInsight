@@ -97,14 +97,10 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     
     # do sparse multiply for the below, see last answer
     # http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
-
     #XThmY = X*Theta.T - Y
-    #XThsp = sp.coo_matrix( (sparse_mult(X,Theta.T,coords),coords), Y.shape ).tocsr()
-    #XThsp = sparse_mult(X,Theta.T,coords)
-    XThmYR = sparse_mult(X,Theta.T,coords) - Y
-
-    # already should be encoded by the sparsity pattern enforced above
     #XThmYR= R.multiply(XThmY) # multiply method of sparse matrices is element-wise
+    # already should be encoded by the sparsity pattern enforced above
+    XThmYR = sparse_mult(X,Theta.T,coords) - Y
 
     J = 1/2. *(XThmYR.data**2).sum()
     J = J + Lambda/2.*( (np.array(Theta)**2).sum() + (np.array(X)**2).sum() )
@@ -120,14 +116,16 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
 
     # Unroll gradients
     grad = np.hstack((
-        np.array(X_grad).flatten('F'), 
-        np.array(Theta_grad).flatten('F') 
+        np.array(X_grad).flatten('F'),
+        np.array(Theta_grad).flatten('F')
         ))
     J = float(J)
     return (J,grad)
 
 # cython-ized version, works fast!
 def sparse_mult(a, b, coords):
+    # inspired by handy snippet from 
+    # http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
     #a,b are np.ndarrays
     from sparse_mult_c import sparse_mult_c
     rows, cols = coords
@@ -135,21 +133,8 @@ def sparse_mult(a, b, coords):
     sparse_mult_c(a,b,rows,cols,C)
     return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
 
-# Handy snippet from http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
-def sparse_mult_notreally(a, b, coords):
-    rows, cols = coords
-    rows, r_idx = np.unique(rows, return_inverse=True)
-    cols, c_idx = np.unique(cols, return_inverse=True)
-    C = np.array(np.dot(a[rows, :], b[:, cols])) # this operation is not sparse
-    return sp.coo_matrix( (C[r_idx,c_idx],coords), (a.shape[0],b.shape[1]) )
 
-def sparse_mult_slow(a, b, coords):
-    rows, cols = coords
-    n = len(rows)
-    C = np.array([ float(a[rows[i],:]*b[:,cols[i]]) for i in range(n) ]) # this is sparse, but VERY slow
-    return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
-
-
+''' skip new user data for now, try to get large set working first
 ## ============== Part 6: Entering ratings for a new user ===============
 #  Before we will train the collaborative filtering model, we will first
 #  add ratings that correspond to a new user that we just observed. This
@@ -157,7 +142,6 @@ def sparse_mult_slow(a, b, coords):
 #  items in our dataset!
 #
 
-''' skip new user data for now, try to get large set working first
 #  Initialize my ratings
 my_ratings = sp.lil_matrix((num_items,1))
 
@@ -185,11 +169,11 @@ my_ratings=my_ratings.tocsr()
 myR=copy(my_ratings)
 myR.data = np.ones(len(myR.data))
 
-def loadMovieList():
+def loadItemList():
     with open('item_ids.txt','r') as f:
         item_list = f.readlines()
     return np.array([' '.join(l.split()[1:]) for l in item_list])
-item_list = loadMovieList()
+item_list = loadItemList()
 
 print 'New user ratings:'
 def print_my_ratings():
@@ -215,7 +199,7 @@ shapes = (shapes,Rcoords)
 '''
 
 
-## ================== Part 7: Learning Movie Ratings ====================
+## ================== Part 7: Learning Item Ratings ====================
 #  Now, you will train the collaborative filtering model on a item rating 
 #  dataset of 1682 items and 943 users
 #

@@ -34,9 +34,10 @@ def contact():
 # see http://twitter.github.io/typeahead.js/examples/
 from flask import flash, redirect
 from forms import LoginForm,UserInputForm
+import os,sys
 
 @app.route('/rb_sanjose')
-def rd_sanjose():
+def rb_sanjose():
     return json.dumps(loc_data['locations'])
 
 @app.route('/brewers')
@@ -53,12 +54,45 @@ def brewers():
 def beers():
     brewer = request.args.get('brewer','')
     q = request.args.get('q','')
+
     print 'getting beers for brewer: '+brewer
     if brewer in tpf['brewers_n_beers'].keys():
         BA_beers = list(set( [b for b in tpf['brewers_n_beers'][brewer] if b.startswith(q)] ))
     else:
         BA_beers = []
     return json.dumps(BA_beers)
+
+@app.route('/user')
+def user():
+    uname = request.args.get('name','')
+    dat = request.args.get('savedata','')
+
+    if uname != '':
+        print 'received data for user '+uname+': ',type(dat),dat
+        fnam = 'app/userdata/'+uname+'.pklz2'
+
+        if dat != '':
+            try:
+                print 'writing '+fnam
+                with gzip.open(fnam,'wb') as f: cPickle.dump(dat,f,protocol=2)
+                return json.dumps({'success':True})
+            except:
+                print 'fail'
+                return json.dumps({'success':False})
+        if os.path.exists(fnam):
+            try:
+                print 'opening '+fnam
+                with gzip.open(fnam,'rb') as f: dat=cPickle.load(f)
+                return json.dumps({'success':True,'dat':dat})
+            except:
+                print 'fail'
+                return json.dumps({'success':False})
+        else: 
+            print 'no data to load'
+            return json.dumps({'success':False})
+    else:
+        print 'no username supplied in query'
+        return json.dumps({'success':False})
 
 
 @app.route('/maps', methods=['GET','POST'])

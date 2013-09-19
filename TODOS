@@ -1,14 +1,15 @@
+Connect user data to recommender
+
 Connect recommended beers to nearby locations
     map between RB and BA names
 
-Create webform and db connections for user login and getting new user preferences
-    with typeahead.js
-    use google login? https://developers.google.com/accounts/
+Plot top 5 recommendations at top 5 locations on map as large green circles
 
-Complete recommender
-    extras: validation - compare algorithm with netflix challenge
 
 Extras:
+    recommender validation - compare algorithm with netflix challenge
+    Switch user data stores to SQL
     Include relational maps to visualize recommended beers
-    Include sentiment analysis of major keywords in text reviews
+    Include sentiment/frequency analysis of major keywords in text reviews
+    Add search beer by keyword (e.g. sour, hoppy, bitter, floral, grapefruit etc)
 
