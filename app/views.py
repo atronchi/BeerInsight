@@ -4,7 +4,7 @@ import os
 import cPickle,gzip,json
 
 # load data
-with gzip.open('scraper/scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
+with gzip.open('app/scraper/scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
 with gzip.open('typeahead_prefetch.pklz2','rb') as f: tpf=cPickle.load(f)
 with gzip.open('app/gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 

@@ -1,14 +1,18 @@
-Connect user data to recommender
-
-Connect recommended beers to nearby locations
-    map between RB and BA names
+Implement:
+    python to connect BA recommendations to RB
+    python to filter reviewed beers from recommendations
+    python to filter review matrix to local and reviewed beers, and users with nonzero resulting reviews
+    js to call recommender (save/call)
+    js to load recommender results, plot on map
 
 Plot top 5 recommendations at top 5 locations on map as large green circles
 
 
 Extras:
+    clean bad matches between BA and RB
     recommender validation - compare algorithm with netflix challenge
     Switch user data stores to SQL
+
     Include relational maps to visualize recommended beers
     Include sentiment/frequency analysis of major keywords in text reviews
     Add search beer by keyword (e.g. sour, hoppy, bitter, floral, grapefruit etc)
