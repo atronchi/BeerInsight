@@ -74,7 +74,7 @@ def user():
         if dat != '':
             try:
                 print 'writing '+fnam
-                with gzip.open(fnam,'wb') as f: cPickle.dump(dat,f,protocol=2)
+                with gzip.open(fnam,'wb') as f: cPickle.dump({'webdat':dat},f,protocol=2)
                 return json.dumps({'success':True})
             except:
                 print 'fail'
@@ -83,7 +83,7 @@ def user():
             try:
                 print 'opening '+fnam
                 with gzip.open(fnam,'rb') as f: dat=cPickle.load(f)
-                return json.dumps({'success':True,'dat':dat})
+                return json.dumps({'success':True,'dat':dat['webdat']})
             except:
                 print 'fail'
                 return json.dumps({'success':False})

@@ -94,7 +94,7 @@ def loadUserData(user,d,show=False):
     import gzip,cPickle,json
     with gzip.open(fnam,'rb') as f: 
         udat = cPickle.load(f)
-    udat = json.loads(udat)
+    udat = json.loads(udat['webdat'])
 
     # build rows,cols,rats
     rows = [];
@@ -322,10 +322,26 @@ def predict(d,show=False,
     d['predictions'] = my_predictions
 
 
+def saveUserData(user,d):
+    # first load existing from disk
+    fnam = '../app/userdata/'+user+'.pklz2'
+    import gzip,cPickle,json
+    with gzip.open(fnam,'rb') as f: 
+        udat = cPickle.load(f)
+
+    # add to dict
+    udat['predictions'] = d['predictions']
+
+    # save
+    with gzip.open(fnam,'wb') as f: 
+        cPickle.dump(udat,f,protocol=2)
+
+
 def run():
     d = loadData()
     loadUserData(user,d,show=True)
     normalizeRatings(d)
     train(d)
     predict(d,show=True)
+    saveUserData(user,d)
 

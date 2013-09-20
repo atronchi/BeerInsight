@@ -27,18 +27,23 @@ for i in enumerate(RB_beers):
     print (i[0],i[1][0]+'|'+i[1][1])
     print RB_matches[-1]
     
+import gzip,cPickle
+with gzip.open('match_BA_RB.pklz2','wb') as f: 
+    cPickle.dump(RB_matches,f,protocol=2)
+
+
+# to write beer lists to files
+def writeLists():
+    import codecs
+    with codecs.open('BA_beer_list.txt','w','utf-8') as f:
+        for i in enumerate(BA_beers):
+            f.write( unicode(str(i[0]) + ' | ' + i[1][0] + ' | ' + i[1][1] + '\n') )
+    with codecs.open('RB_beer_list.txt','w','utf-8') as f:
+        for i in enumerate(RB_beers):
+            f.write( unicode(str(i[0]) + ' | ' + i[1][0] + ' | ' + i[1][1] + '\n') )
 
 
 '''
-import codecs
-with codecs.open('BA_beer_list.txt','w','utf-8') as f:
-    for i in enumerate(BA_beers):
-        f.write( unicode(str(i[0]) + ' | ' + i[1][0] + ' | ' + i[1][1] + '\n') )
-with codecs.open('RB_beer_list.txt','w','utf-8') as f:
-    for i in enumerate(RB_beers):
-        f.write( unicode(str(i[0]) + ' | ' + i[1][0] + ' | ' + i[1][1] + '\n') )
-
-
 # array of manually matched RB to BA
 RB_to_BA = [
  [0,3533], 
