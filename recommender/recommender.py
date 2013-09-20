@@ -4,7 +4,7 @@
 # Coursera ml-003 machine learning taught by Andrew Ng
 # written by Alexander Tronchin-James 2013-05-31
 
-# The algorithm uses a regularized least-squares cost function and L-BFGS for optimization
+# The algorithm uses regularized least-squares with L-BFGS
 
 import os
 import numpy as np
@@ -16,73 +16,131 @@ import scipy.sparse as sp
 import time
 import ipdb # not use ipdb.set_trace()
 
+''' Outline of procedures:
 
-## Machine Learning Online Class
-#  Exercise 8 | Collaborative Filtering / recommender systems
-#
-#     estimateGaussian.m
-#     selectThreshold.m
-#     cofiCostFunc.m
-#
+ loadData 
+    load ratings matrices
+    define shapes
 
-## Initialization
-os.system('clear') # clear the screen
-pl.close('all') # close any open plots
-pl.ion() # turn on plotting interactive mode, otherwise plots pause computation
+ loadLocalData(location?)
+    load listing of local availability
+
+ loadUserData(username) 
+    load specific user ratings, merge with matrices
+    *reduce matrices to union of user ratings and local availability to speedup training
+
+ normalizeRatings
+ cofiCostFunc and sparse_mult
+ train
+    define shapes
+    run training
+    store result
+
+ predict
+    load training result if necessary
+    predict for user
+    store result
+ 
+ validate
+    compare cost on validation and training sets
+ tune
+    calculate learning curves
+    optimize number of features and regularization parameter
+
+'''
 
 
-## =============== Part 1: Loading item ratings dataset ================
+## =============== Loading item ratings dataset ================
 #  You will start by loading the item ratings dataset to understand the
 #  structure of the data.
 #  
-print 'Loading ratings dataset.\n'
+def loadData(fnam='reviews.pklz2'):
+    print 'Loading ratings dataset.\n'
 
-#  Load data
-import gzip,cPickle
-def loadData(fnam):
-    with gzip.open(fnam,'rb') as f: return cPickle.load(f)
+    import gzip,cPickle
+    with gzip.open(fnam,'rb') as f: 
+        BA=cPickle.load(f)
 
-BA = loadData('reviews.pklz2')
+    user_list = BA['users']
+    item_list = BA['beers']
 
-# cast as floats to avoid overflow errors in math
-# scipy sparse matrices do not throw exceptions on overflow!
-# http://stackoverflow.com/questions/13402393/scipy-sparse-matrices-inconsistent-sums
-Y = sp.csr_matrix(BA['ratings'].T, dtype='float')
-# stored 'israted' has some extra values? 
-# Maybe there are some zero reviews? Strike these for now.
-R = sp.csr_matrix(sp.csr_matrix(Y,dtype=bool), dtype=float) 
+    # Y is a num_items x num_users matrix
+    #  cast as float to avoid overflow errors in math
+    #  scipy sparse matrices do not throw exceptions on overflow!
+    #  http://stackoverflow.com/questions/13402393/scipy-sparse-matrices-inconsistent-sums
+    Y = sp.csr_matrix(BA['ratings'].T, dtype=float)
 
-# build shapes arrays
-Rcoo = sp.coo_matrix(R)
-Rcoords = (Rcoo.row,Rcoo.col)
-(num_items,num_users) = Y.shape
-num_features = 10 # adjustable
-shapes = (num_users,num_items,num_features)
+    # R is a num_items x num_users matrix, where R(i,j) = 1 if and only if user j gave a
+    # rating to item i
+    #  stored R=BA['israted'] has a few extra values? 
+    #  maybe there are some zero reviews? Strike these for now.
+    R = sp.csr_matrix(sp.csr_matrix(Y,dtype=bool), dtype=float) 
 
-shapes = (shapes,Rcoords)
+    return {'Y':Y, 'R':R, 'user_list':user_list, 'item_list':item_list}
 
-#  Y is a num_items x num_users matrix, containing ratings (1-5) of 1682 items on 
-#  943 users
+
+## ============== User ratings ===============
+#  Before we train the collaborative filtering model, we will first
+#  add ratings that correspond to a new user that we just observed.
 #
-#  R is a 1682x943 matrix, where R(i,j) = 1 if and only if user j gave a
-#  rating to item i
+def loadUserData(user,d,show=False):
+    # unpack
+    brewer_list = np.array([i[0] for i in d['item_list']])
+    beer_list = np.array([i[1] for i in d['item_list']])
+    (num_items,num_users) = d['Y'].shape
 
-user_list = BA['users']
-item_list = BA['beers']
+    # load from disk
+    fnam = '../app/userdata/'+user+'.pklz2'
+    import gzip,cPickle,json
+    with gzip.open(fnam,'rb') as f: 
+        udat = cPickle.load(f)
+    udat = json.loads(udat)
 
-#print 'Program paused. Press enter to continue.'; raw_input()
+    # build rows,cols,rats
+    rows = [];
+    rats = [];
+    for u in udat:
+        brewer,beer,rat = u
+        idx = np.where( (brewer_list==brewer) * (beer_list==beer) )[0]
+        if len(idx)>0:
+            rows.append(idx[0])
+            rats.append(int(rat))
+    rows = np.array(rows)
+    cols = np.zeros(rows.shape[0])
+    rats = np.array(rats)
+
+    # construct my_ratings and myR
+    my_ratings = sp.coo_matrix( (rats,(rows,cols)), (num_items,1), dtype=float)
+
+    from copy import copy
+    myR=copy(my_ratings)
+    myR.data = np.ones(len(myR.data))
+
+    if show:
+        item_list = d['item_list']
+        print 'User ratings for '+user+':'
+        for i in range(len(my_ratings.data)):
+            print 'Rated {0} for {1}, {2}'.format(
+                my_ratings.data[i],
+                brewer_list[my_ratings.row[i]],
+                beer_list[my_ratings.row[i]]
+                )
+
+    #  Add our own ratings to the data matrix
+    d['Y'] = sp.hstack((my_ratings, d['Y']),format='csr')
+    d['R'] = sp.hstack((myR, d['R']),format='csr')
 
 
-## ============ Part 2: Collaborative Filtering Cost Function ===========
+
+
+## ============ Collaborative Filtering Cost Function ===========
 #  You will now implement the cost function for collaborative filtering.
 #  To help you debug your cost function, we have included set of weights
 #  that we trained on that. Specifically, you should complete the code in 
 #  cofiCostFunc.m to return J.
-
-# Define cost function
+#
 def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
-    num_users, num_items, num_features = shapes[0]
-    coords = shapes[1]
+    num_users,num_items,num_features,coords = shapes
 
     # reshape params into X and Theta
     X = np.reshape(
@@ -122,7 +180,7 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     J = float(J)
     return (J,grad)
 
-# cython-ized version, works fast!
+# cython-ized version of sparse_mult: works fast, actually sparse
 def sparse_mult(a, b, coords):
     # inspired by handy snippet from 
     # http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
@@ -134,147 +192,140 @@ def sparse_mult(a, b, coords):
     return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
 
 
-''' skip new user data for now, try to get large set working first
-## ============== Part 6: Entering ratings for a new user ===============
-#  Before we will train the collaborative filtering model, we will first
-#  add ratings that correspond to a new user that we just observed. This
-#  part of the code will also allow you to put in your own ratings for the
-#  items in our dataset!
+
+## ================== Normalize Item Ratings ====================
 #
+def normalizeRatings(d):
+    print '\nNormalizing ratings...'
 
-#  Initialize my ratings
-my_ratings = sp.lil_matrix((num_items,1))
-
-# Check the file item_idx.txt for id of each item in our dataset
-# For example, Toy Story (1995) has ID 1, so to rate it "4", you can set
-my_ratings[0,0] = 4
-
-# Or suppose did not enjoy Silence of the Lambs [1991,0], you can set
-my_ratings[97,0] = 2
-
-# We have selected a few items we liked / did not like and the ratings we
-# gave are as follows:
-my_ratings[6,0] = 3
-my_ratings[11,0]= 5
-my_ratings[53,0] = 4
-my_ratings[63,0]= 5
-my_ratings[65,0]= 3
-my_ratings[68,0] = 5
-my_ratings[182,0] = 4
-my_ratings[225,0] = 5
-my_ratings[354,0]= 5
-
-from copy import copy
-my_ratings=my_ratings.tocsr()
-myR=copy(my_ratings)
-myR.data = np.ones(len(myR.data))
-
-def loadItemList():
-    with open('item_ids.txt','r') as f:
-        item_list = f.readlines()
-    return np.array([' '.join(l.split()[1:]) for l in item_list])
-item_list = loadItemList()
-
-print 'New user ratings:'
-def print_my_ratings():
-    for i in range(len(my_ratings.data)):
-        if my_ratings.data[i] > 0:
-            print 'Rated {0} for {1}'.format(my_ratings.data[i],item_list[my_ratings.tocoo().row[i]])
-print_my_ratings()
-
-#  Add our own ratings to the data matrix
-Y = sp.hstack((my_ratings, Y),format='csr')
-R = sp.hstack((myR, R),format='csr')
-
-#  Re-calculate updated shapes
-num_items,num_users = Y.shape
-num_features = 10 # adjustable
-shapes = (num_users,num_items,num_features)
-
-Rcoo = sp.coo_matrix(R)
-Rcoords = (Rcoo.row,Rcoo.col)
-shapes = (shapes,Rcoords)
-
-#print 'Program paused. Press enter to continue.'; raw_input()
-'''
-
-
-## ================== Part 7: Learning Item Ratings ====================
-#  Now, you will train the collaborative filtering model on a item rating 
-#  dataset of 1682 items and 943 users
-#
-
-#  Normalize Ratings
-def normalizeRatings(Y,R):
+    # unpack parameters
+    Y = d['Y']
+    R = d['R']
     m,n = Y.shape
+    Rcoo = R.tocoo()
+    Rcoords = (Rcoo.row,Rcoo.col)
 
     nrev = np.array( R.sum(axis=1) ).flatten()
-    sumrev = np.array( Y.sum(axis=1) ).flatten() 
+    sumrev = np.array( Y.sum(axis=1) ).flatten()
+
     Ymean = sumrev / nrev
-    Ynorm = sp.coo_matrix((Y.tocoo().data-Ymean[Rcoords[0]],Rcoords),Y.shape).tocsr()
-    return (Ynorm,Ymean)
+    d['Ymean'] = Ymean
+    d['Ynorm'] = sp.coo_matrix(
+        (Y.tocoo().data-Ymean[Rcoords[0]],
+         Rcoords
+         ), Y.shape
+        ).tocsr()
 
-print '\nNormalizing ratings...'
-Ynorm,Ymean = normalizeRatings(Y, R);
 
 
-# Set Initial Parameters (Theta, X), regularization, and costFn
-X = np.random.randn(num_items, num_features)
-Theta = np.random.randn(num_users, num_features)
-initial_parameters = np.hstack((
-    np.array(X).flatten('F'), 
-    np.array(Theta).flatten('F') 
-    ))
-Lambda = 10 # adjustable
-costFn = lambda t: cofiCostFunc( t,Ynorm,R,shapes,Lambda )
+## ================== Training Item Ratings ====================
+#
+def train(d,
+    Lambda = 10, # tunable
+    num_features = 10 # tunable
+    ):
 
-# Train
-print '\nTraining collaborative filtering...\n'
-result = minimize(costFn, initial_parameters,
-                  method='L-BFGS-B', jac=True, #callback=cb, 
-                  options={'disp':True,'maxiter':100}
-                 ) 
-cost,params = (result['fun'],result['x'])
+    if not 'Ynorm' in d.keys(): normalizeRatings(d)
 
-# Unfold the returned theta back into X and Theta
-X = np.matrix(np.reshape(
-    params[:num_items*num_features], 
-    (num_items, num_features), order='F'
-    ))
-Theta = np.matrix(np.reshape(
-    params[num_items*num_features:],
-    (num_users, num_features), order='F'
-    ))
+    # unpack parameters
+    Y = d['Y']
+    Ynorm = d['Ynorm']
+    R = d['R']
+    m,n = Y.shape
+    Rcoo = sp.coo_matrix(R)
+    Rcoords = (Rcoo.row,Rcoo.col)
 
-print 'Recommender system learning completed.\n'
+    # build shapes arrays
+    (num_items,num_users) = Y.shape
+    shapes = (num_users,num_items,num_features,Rcoords)
 
-#print 'Program paused. Press enter to continue.'; raw_input()
+
+    print '\nTraining collaborative filtering...\n'
+
+    # Set Initial Parameters (Theta, X), regularization, and costFn
+    X = np.random.randn(num_items, num_features)
+    Theta = np.random.randn(num_users, num_features)
+    initial_parameters = np.hstack((
+        np.array(X).flatten('F'), 
+        np.array(Theta).flatten('F') 
+        ))
+    costFn = lambda t: cofiCostFunc( t,Ynorm,R,shapes,Lambda )
+
+    # Train
+    result = minimize(costFn, initial_parameters,
+        method='L-BFGS-B', jac=True, #callback=cb, 
+        options={'disp':True,'maxiter':100}
+        )
+
+    print 'Recommender system learning completed.\n'
+
+    # Unfold the returned theta back into X and Theta
+    params = result['x']
+    d['cost'] = result['fun']
+    d['X'] = np.matrix(np.reshape(
+        params[:num_items*num_features], 
+        (num_items, num_features), order='F'
+        ))
+    d['Theta'] = np.matrix(np.reshape(
+        params[num_items*num_features:],
+        (num_users, num_features), order='F'
+        ))
+    d['Lambda'] = Lambda
+
 
 
 ## ================== Part 8: Recommendation for you ====================
 #  After training the model, you can now make recommendations by computing
 #  the predictions matrix.
 #
+def predict(d,show=False,
+    predict_user=0 # user number to predict for
+    ):
 
-predict_user = 0 # user number to predict for
-pcoords = (
-           np.array( range(num_items) ),
-           predict_user + np.zeros(num_items,dtype='int')
-          )
-p = sparse_mult( X,Theta.T, pcoords ).tocsr()
-my_predictions = np.array(p[:,predict_user].todense()).flatten() + Ymean
+    # unpack parameters
+    item_list = d['item_list']
+    X = d['X']
+    Theta = d['Theta']
+    Ymean = d['Ymean']
+    Y = d['Y']
+    R = d['R']
+    Rcoo = sp.coo_matrix(R)
+    Rcoords = (Rcoo.row,Rcoo.col)
 
-ix = [i[0] for i in sorted(
-    enumerate(my_predictions), 
-    key=lambda x:x[1], 
-    reverse=True
-    )]
+    # build shapes arrays
+    (num_items,num_users) = Y.shape
+    num_features = d['Theta'].shape
+    shapes = (num_users,num_items,num_features,Rcoords)
 
-print '\nTop recommendations for you:'
-for i in range(10):
-    j = ix[i]
-    print 'Predicting rating {0} for item {1}'.format(
-        my_predictions[j],
-        item_list[j]
-        )
+    pcoords = (
+               np.array( range(num_items) ),
+               predict_user + np.zeros(num_items,dtype='int')
+              )
+    p = sparse_mult( X,Theta.T, pcoords ).tocsr()
+    my_predictions = np.array(p[:,predict_user].todense()).flatten() + Ymean
+
+    ix = [i[0] for i in sorted(
+        enumerate(my_predictions), 
+        key=lambda x:x[1], 
+        reverse=True
+        )]
+
+    if show:
+        print '\nTop recommendations for you:'
+        for i in range(10):
+            j = ix[i]
+            print 'Predicting rating {0} for item {1}'.format(
+                my_predictions[j],
+                item_list[j]
+                )
+
+    d['predictions'] = my_predictions
+
+
+def run():
+    d = loadData()
+    loadUserData(user,d,show=True)
+    normalizeRatings(d)
+    train(d)
+    predict(d,show=True)
 

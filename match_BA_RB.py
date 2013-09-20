@@ -7,18 +7,29 @@ def loadData(fnam):
 BA = loadData('recommender/reviews.pklz2')
 RB = loadData('scraper/scrape_ratebeer.pklz')
 
-#BA_brewers = np.array([b[0] for b in BA['beers']])
-#BA_beers = np.array([b[1] for b in BA['beers']])
 BA_beers = BA['beers']
 RB_beers = np.array([ [i['brewery'],i['name']] for i in RB['beers'] ])
 
 # generate index mapping each RB entry to the appropriate BA entry
-RB_to_BA = np.zeros( len(RB_beers), dtype=int )-1
+RB_to_BA = np.zeros( len(RB_beers), dtype=int )
 
-#BA_beers[ np.where(BA_brewers == RB_beers[0][0])[0] ]
-# can't do a search, since the names are different in places
-# I'll have to do this manually. :-\
 
+import ngram
+BA_brewerbeers = ngram.NGram(enumerate(
+    [b[0]+'|'+b[1] for b in BA_beers]
+    ), key=lambda x:x[1].lower() )
+RB_matches = []
+for i in enumerate(RB_beers):
+    RB_matches.append(
+        BA_brewerbeers.find( 
+            (i[1][0]+'|'+i[1][1]).lower() 
+            ))
+    print (i[0],i[1][0]+'|'+i[1][1])
+    print RB_matches[-1]
+    
+
+
+'''
 import codecs
 with codecs.open('BA_beer_list.txt','w','utf-8') as f:
     for i in enumerate(BA_beers):
@@ -29,7 +40,6 @@ with codecs.open('RB_beer_list.txt','w','utf-8') as f:
 
 
 # array of manually matched RB to BA
-'''
 RB_to_BA = [
  [0,3533], 
  [1,21092],
@@ -185,6 +195,110 @@ RB_to_BA = [
  [151,1134],
  [152,20333],
  [153,18111],
- [154
+ [154,3561],
+ [155,26589],
+ [156,-1],
+ [157,8170],
+ [158,-1],
+ [159,-1],
+ [160,10719],
+ [161,1832],
+ [162,33939],
+ [163,62167],
+ [164,12953],
+ [165,8056],
+ [166,4347],
+ [167,49700],
+ [168,4351],
+ [169,12885],
+ [170,1054],
+ [171,13073],
+ [172,-1],
+ [173,6143],
+ [174,-1],
+ [175,-1],
+ [176,55907],
+ [178,-1],
+ [179,22868],
+ [180,20332],
+ [181,46827],
+ [182,-1],
+ [183,1003],
+ [184,-1],
+ [185,-1],
+ [186,19431],
+ [187,4556],
+ [188,12318],
+ [189,33314],
+ [190,-1],
+ [191,50621],
+ [192,3580],
+ [193,8190],
+ [194,29578],
+ [195,12048],
+ [196,62165],
+ [197,33941],
+ [198,54999],
+ [199,55805],
+ [200,-1],
+ [201,53332],
+ [202,25057],
+ [203,4575],
+ [204,56299],
+ [205,54806],
+ [206,22198],
+ [207,50591],
+ [208,132],
+ [209,20019],
+ [210,6568],
+ [211,46076],
+ [212,-1],
+ [213,23750],
+ [214,-1],
+ [215,42758],
+ [216,-1],
+ [217,8038],
+ [218,-1],
+ [219,39546],
+ [220,12796],
+ [221,-1],
+ [222,58803],
+ [223,50369],
+ [224,-1],
+ [225,52909],
+ [226,18129],
+ [227,2043],
+ [228,-1],
+ [229,-1],
+ [230,14174],
+ [231,47049],
+ [232,33804],
+ [233,-1],
+ [234,58778],
+ [235,22190],
+ [236,-1],
+ [237,-1],
+ [238,57993],
+ [239,26346],
+ [240,-1],
+ [241,34898],
+ [242,19893],
+ [243,12885],
+ [244,-1],
+ [245,-1],
+ [246,46978],
+ [247,-1],
+ [248,55963],
+ [249,43223],
+ [250,22798],
+ [251,-1],
+ [252,-1],
+ [253,1873],
+ [254,19201],
+ [255,36547],
+ [256,53264],
+ [257,12736],
+ [258,39735],
+ [259,52954],
 
 '''
