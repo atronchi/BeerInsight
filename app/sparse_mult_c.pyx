@@ -1,4 +1,5 @@
 # working from tutorial at: http://docs.cython.org/src/tutorial/numpy.html
+# to compile: python setup_sparse_mult.py build_ext --inplace
 cimport numpy as np
 
 # Turn bounds checking back on if there are ANY problems!
