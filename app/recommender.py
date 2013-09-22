@@ -325,8 +325,8 @@ def predict(d,show=False,
 
     # calculate predictions
     pcoords = (
-               np.array( range(num_items) ),
-               predict_user + np.zeros(num_items,dtype='int')
+               np.array( range(num_items),dtype='int32'),
+               predict_user + np.zeros(num_items,dtype='int32')
               )
     p = sparse_mult( X,Theta.T, pcoords ).tocsr()
     my_predictions = np.array(p[:,predict_user].todense()).flatten() + Ymean

@@ -19,8 +19,13 @@ function initialize() {
 }
 google.maps.event.addDomListener(window, 'load', initialize);
 
+var markers = [];
+
 // place small markers with descriptive popups at all the locations
 function placeMarkers(data,markerSize,markerColor) {
+      // clear previous markers
+      if (markers.length>0) { $.each(markers, function(){this.setMap(null);} ); markers = []; }
+
       // set defaults
       markerSize = markerSize || 1;
       markerColor= markerColor || 'black';
@@ -59,6 +64,7 @@ function placeMarkers(data,markerSize,markerColor) {
                 scale:markerSize,fillColor:markerColor,fillOpacity:1,strokeColor:'black',strokeWeight:1
               }, map: map
               }); 
+          markers.push(marker);
           google.maps.event.addListener(marker, 'click', function() {
               infowindow.open(map,marker);
               });
