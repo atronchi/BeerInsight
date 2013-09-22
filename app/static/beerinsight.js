@@ -41,7 +41,7 @@ function placeMarkers(data,markerSize,markerColor) {
               contentString += 'top recommended beers: <ol type=1>';
               for (var i=0; i<beercount; i++) {
                   contentString += '<li><a href="'+this.beers[i].item.url+'">'+this.beers[i].item.brewery+', '+this.beers[i].item.name+'</a><br>' +
-                                   this.beers[i].item.style+', predicted rating='+this.beers[i].item.prediction+', ' +
+                                   this.beers[i].item.style+', predicted rating='+this.beers[i].item.prediction.toFixed(1)+', ' +
                                    '<i>last seen '+this.beers[i].date+'</i></li>';
               }
               contentString += '</ol>';
@@ -137,6 +137,8 @@ function printRatings() {
     } else {
         $("#ratings_table").html("");
     }
+
+    showRecBtn();
 };
 
 
@@ -161,7 +163,6 @@ function loginUser() {
 
                 if (data.dat != undefined) {
                     myRatings=JSON.parse(data.dat);
-                    printRatings();
 
                     // also plot markers at top 5 locations and show recommendations if done
                     if (data.loc != undefined) {
@@ -179,13 +180,16 @@ function loginUser() {
                     console.log('no ratings to save');
                 }
             }
-        });
+
+            printRatings();
+
+        }); // end getJSON
     }
 };
 
 function logoutUser() {
     var content = "<input id='user' name='user' size='10' class='typeahead' style='font-size:10pt;' type='text'> " +
-                  "<input class='btn btn-primary btn-sm' type='submit' value='Sign In'>";
+                  "<input class='btn btn-primary btn-xs' type='submit' value='Sign In'>";
     $("#login-status").html(content);
 
     // clear user name and ratings on logout
@@ -234,12 +238,13 @@ function runRecommender() {
     );
 };
 
+
+// show beer recommendations
 function showRecommendations(beer) {
-    // show beer recommendations
     var content = "<div style='font-size:14px;'><p>The top locations with these beers are shown with <span style='color:green;'>green</span> markers on the map.</p>" +
                   '<p>Your top recommended beers and predicted ratings are:<ol type=1>';
     $.each(beer, function() { 
-        content += "<li><a href='"+this.url+"'>"+this.brewery+', '+this.name+'</a> (<i>rating of '+this.prediction+'</i>)</li>'; 
+        content += "<li><a href='"+this.url+"'>"+this.brewery+', '+this.name+'</a> (<i>rating of '+this.prediction.toFixed(1)+'</i>)</li>'; 
         });
     content += '</ol></p></div>';
     $("#rec-content").html(content);
@@ -248,6 +253,17 @@ function showRecommendations(beer) {
     showRecPane();
 }
 
+
+// conditionally show recommend button
+function showRecBtn() {
+    if (myRatings.length==0 || user=='') { 
+        $("#rec-button").html('Enter at least one rating and your username to get recommendations.');
+    } else {
+        $("#rec-button").html("<a href='#' class='btn btn-primary btn-sm' onclick='runRecommender();'>Recommend</a>");
+    }
+}
+
+// display the panes
 function showRecPane() {
     document.getElementById('form-canvas').style.visibility='hidden';
     document.getElementById('recommend-canvas').style.visibility='visible';
@@ -256,3 +272,4 @@ function showRatPane() {
     document.getElementById('form-canvas').style.visibility='visible';
     document.getElementById('recommend-canvas').style.visibility='hidden';
 }
+

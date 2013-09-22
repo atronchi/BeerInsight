@@ -46,18 +46,16 @@
         <form action="javascript:addRating();" method="post" name="rating_form">
             <p>
                 Please enter your ratings:
-                <!-- <a href='#' class="btn btn-primary" onClick="runRecommender();">Recommend</a> -->
                 <br>
                 <input id="brewer" name="brewer" size="20" type="text" class="typeahead" value="Brewer" onblur="prefetchBeer();"> 
                 <input id="beer" name="beer" size="20" type="text" class="typeahead" value="Beer"> 
                 <input id="rating" name="rating" size="1" type="text" class="typeahead" value="10">
-                <input class="btn btn-primary btn-xs" type="submit" value="O" style='visibility:hidden;'>
-                <!-- <a href='#' onClick='addRating();' class="btn btn-primary">Submit rating</a> -->
+                <input class="btn btn-primary btn-xs" type="submit" value="enter">
             </p>
+
             <div id='ratings_table'></div>
-            <p>
-                <a href='#' class="btn btn-primary btn-sm" onclick="runRecommender();">Recommend</a>
-            </p>
+
+            <p id='rec-button'></p>
         </form>
     </div>
 
@@ -67,9 +65,7 @@
             <a href='#' style='padding-left:10px;' alt='close this window'
                onClick="document.getElementById('recommend-canvas').style.visibility='hidden';">X</a>
         </div>
-
-        <div id='rec-content'>
-        </div>
+        <div id='rec-content'></div>
     </div>
 
 
