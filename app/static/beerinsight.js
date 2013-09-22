@@ -210,8 +210,12 @@ function saveData() {
 */
 
 function runRecommender() {
-    document.getElementById('form-canvas').style.visibility='hidden';
-    document.getElementById('recommend-canvas').style.visibility='visible';
+
+    var content = "<p> Looking for some beers you will like.<br>" +
+                  "This can take a couple minutes. <img src='static/img/spinning-wheel.gif'>" +
+                  "<img src='static/img/beerinsight-logo-lg.png' style='max-height:25%;'></p>";
+    $("#rec-content").html(content);
+    showRecPane();
 
     console.log('getting recommendations for user '+user);
 
