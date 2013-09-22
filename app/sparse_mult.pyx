@@ -19,3 +19,17 @@ def sparse_mult_c(np.ndarray[np.float64_t, ndim=2] a,
         for j in range(k):
             C[i] += a[rows[i],j] * b[j,cols[i]]
 
+
+# cython-ized version of sparse_mult: works fast, actually sparse
+import numpy as np
+import scipy.sparse as sp
+def sparse_mult(a, b, coords):
+    # inspired by handy snippet from 
+    # http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
+    #a,b are np.ndarrays
+    rows, cols = coords
+    C = np.zeros(rows.shape[0])
+    sparse_mult_c(a,b,rows,cols,C)
+    return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
+
+

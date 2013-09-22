@@ -6,5 +6,5 @@ from Cython.Distutils import build_ext
 
 setup(
     cmdclass = {'build_ext': build_ext},
-    ext_modules = [Extension("sparse_mult_c", ["sparse_mult_c.pyx"])]
+    ext_modules = [Extension("sparse_mult", ["sparse_mult.pyx"])]
 )

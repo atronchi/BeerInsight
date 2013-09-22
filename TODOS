@@ -1,9 +1,14 @@
 MVP completed.
 
+setup typeahead to tokenize against all words instead of whole names, also check for case sensitivity
+integrate sparse_mult to module for pull request to scipy
+
+
 Extras:
     clean bad matches/dupes between BA and RB
     try speeding up recommender by filtering users to 1000 closest pearson correlations to user
     recommender validation - compare algorithm with netflix challenge
+
     switch user data stores to SQL
     switch map markers and my ratings button to click to toggle popup
 

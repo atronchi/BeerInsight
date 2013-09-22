@@ -212,6 +212,8 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     J = float(J)
     return (J,grad)
 
+from sparse_mult import sparse_mult
+'''
 # cython-ized version of sparse_mult: works fast, actually sparse
 def sparse_mult(a, b, coords):
     # inspired by handy snippet from 
@@ -222,7 +224,7 @@ def sparse_mult(a, b, coords):
     C = np.zeros(rows.shape[0])
     sparse_mult_c(a,b,rows,cols,C)
     return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
-
+'''
 
 
 ## ================== Normalize Item Ratings ====================
@@ -324,7 +326,7 @@ def predict(d,show=False,
     (num_items,num_users) = Y.shape
 
     # calculate predictions
-    pcoords = (
+    pcoords = ( # need to specify dtype='int32' for sparse_mult
                np.array( range(num_items),dtype='int32'),
                predict_user + np.zeros(num_items,dtype='int32')
               )
