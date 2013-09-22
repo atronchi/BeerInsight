@@ -66,34 +66,61 @@ def beers():
 @app.route('/user')
 def user():
     uname = request.args.get('name','')
-    dat = request.args.get('savedata','')
+    savedata = request.args.get('savedata','')
+    loaddata = request.args.get('loaddata','')
+    recommend= request.args.get('recommend','')
 
     if uname != '':
-        print 'received data for user '+uname+': ',type(dat),dat
+        print 'received data for user '+uname+': ',type(savedata),savedata
         fnam = 'app/userdata/'+uname+'.pklz2'
 
-        if dat != '':
+        if savedata != '':
             try:
                 print 'writing '+fnam
-                with gzip.open(fnam,'wb') as f: cPickle.dump({'webdat':dat},f,protocol=2)
+                with gzip.open(fnam,'wb') as f: cPickle.dump({'webdat':savedata},f,protocol=2)
                 return json.dumps({'success':True})
+
             except:
                 print 'fail'
-                return json.dumps({'success':False})
-        if os.path.exists(fnam):
+                return json.dumps({'success':False,'errmsg':'error writing user data'})
+
+        if loaddata=='True':
+            if os.path.exists(fnam):
+                try:
+                    print 'opening '+fnam
+                    with gzip.open(fnam,'rb') as f: dat=cPickle.load(f)
+                    if 'beers' in dat.keys() and 'locations' in dat.keys():
+                        return json.dumps({'success':True,
+                                           'dat':dat['webdat'],
+                                           'beer':dat['beers'],
+                                           'loc':dat['locations']
+                                          })
+                    else:
+                        return json.dumps({'success':True,
+                                           'dat':dat['webdat']
+                                          })
+                except:
+                    print 'fail'
+                    return json.dumps({'success':False,'errmsg':'error loading user data'})
+
+            else: 
+                print 'new user: no data to load'
+                return json.dumps({'success':False,'errmsg':'new user'})
+
+        if recommend=='True':
+            import sys
             try:
-                print 'opening '+fnam
-                with gzip.open(fnam,'rb') as f: dat=cPickle.load(f)
-                return json.dumps({'success':True,'dat':dat['webdat']})
+                print 'running recommender...'
+                import app.recommender as rec
+                (beer,loc) = rec.run(uname)
+                return json.dumps({'success':True,'beer':beer,'loc':loc})
             except:
-                print 'fail'
-                return json.dumps({'success':False})
-        else: 
-            print 'no data to load'
-            return json.dumps({'success':False})
+                print 'recommender error: ',sys.exc_info()[0]
+                return json.dumps({'success':False,'errmsg':'recommender error'})
+
     else:
         print 'no username supplied in query'
-        return json.dumps({'success':False})
+        return json.dumps({'success':False,'errmsg':'no username specified'})
 
 
 @app.route('/maps', methods=['GET','POST'])

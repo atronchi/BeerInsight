@@ -1,94 +1,123 @@
+/*
+    beerinsight.js
+*/
+
+var map;
 function initialize() {
-    geocoder = new google.maps.Geocoder();
+    // initialize the map canvas
     var mapOptions = {
       center: new google.maps.LatLng(37.3894, -122.0819), // convention is N and E
-      zoom: 12,
+      zoom: 10,
       mapTypeId: google.maps.MapTypeId.ROADMAP
     };
-
-    var map = new google.maps.Map(document.getElementById("map-canvas"),
+    map = new google.maps.Map(document.getElementById("map-canvas"),
         mapOptions);
 
-    jQuery.getJSON('/rb_sanjose', function(data) {
-      jQuery.each(data, function(){ 
-          //map.setCenter(results[0].geometry.location); // don't need to reset the map center
-          //console.log('loc: '+this.latlng[0]+','+this.latlng[1]);
+    logoutUser();
+    prefetchBrewers();
+    $.getJSON('/rb_sanjose', function(data){ placeMarkers(data); });
+}
+google.maps.event.addDomListener(window, 'load', initialize);
+
+// place small markers with descriptive popups at all the locations
+function placeMarkers(data,markerSize,markerColor) {
+      // set defaults
+      markerSize = markerSize || 1;
+      markerColor= markerColor || 'black';
+
+      $.each(data, function(){ 
           var contentString = '<div><a href="'+this.url+'"><h1>'+this.name+'</h1></a><br>' +
                               'address: '+this.addr+'<br>' + 
                               'telephone: '+this.tel+'<br>' + 
-                              'hours: '+this.hours+'<br>' +
-                              'beers:<ul>';
-          jQuery.each(this.beers, function(){ contentString += 
-                              '<li><a href="'+this.item.url+'">'+this.item.brewery+', '+this.item.name+'</a><br>' +
-                              this.item.style+', RB score='+this.item.rb_score+', ' +
-                              '<i>last seen '+this.date+'</i></li>'; });
-          contentString += '</ul></div>';
-          var infowindow = new google.maps.InfoWindow({
-              content: contentString
+                              'hours: '+this.hours+'<br>';
+          if (this.prediction != undefined) {
+              var beercount = 0;
+              if (this.beers.length>2) { beercount=3; } else { beercount=this.beers.length; }
+              contentString += 'top recommended beers: <ol type=1>';
+              for (var i=0; i<beercount; i++) {
+                  contentString += '<li><a href="'+this.beers[i].item.url+'">'+this.beers[i].item.brewery+', '+this.beers[i].item.name+'</a><br>' +
+                                   this.beers[i].item.style+', predicted rating='+this.beers[i].item.prediction+', ' +
+                                   '<i>last seen '+this.beers[i].date+'</i></li>';
+              }
+              contentString += '</ol>';
+          } else {
+              contentString += 'recent beers: <ul>';
+              $.each(this.beers, function(){ 
+                  contentString += '<li><a href="'+this.item.url+'">'+this.item.brewery+', '+this.item.name+'</a><br>' +
+                                   this.item.style+', RB score='+this.item.rb_score+', ' +
+                                   '<i>last seen '+this.date+'</i></li>';
               });
+              contentString += '</ul>';
+          }
+          contentString += '</div>';
+          var infowindow = new google.maps.InfoWindow({content: contentString});
           var marker = new google.maps.Marker({
-              //position: this.latlng,
               position: new google.maps.LatLng(this.latlng[0], this.latlng[1]),
               title: this.name,
-              icon: { 
-                // for more options: https://developers.google.com/maps/documentation/javascript/overlays#Symbols
+              icon: { // for more options: https://developers.google.com/maps/documentation/javascript/overlays#Symbols
                 path:google.maps.SymbolPath.CIRCLE,
-                scale:3,fillColor:'red',fillOpacity:1,strokeColor:'black',strokeWeight:1
-              },
-              map: map
+                scale:markerSize,fillColor:markerColor,fillOpacity:1,strokeColor:'black',strokeWeight:1
+              }, map: map
               }); 
           google.maps.event.addListener(marker, 'click', function() {
               infowindow.open(map,marker);
               });
-          }); // end each
-      }); // end getJSON
-          
-    prefetchBrewer();
-    logoutUser();
-} // end initialize
+      }); // end each
+};
+      
+/*
+    prefetches for typeahead.js
+*/
 
-google.maps.event.addDomListener(window, 'load', initialize);
-  function prefetchBrewer() {
+function prefetchBrewers() {
     var brewer_url = "/brewers";
     console.log('initializing typeahead for: '+brewer_url);
 
     $('#brewer').typeahead({                                
-      name: 'brewer',
-      local:[], //prefetch:{'url':brewer_url, 'ttl':2000},
-      remote:brewer_url+'?q=%QUERY'
+        name: 'brewer',
+        local:[], //prefetch:{'url':brewer_url, 'ttl':2000},
+        remote:brewer_url+'?q=%QUERY'
     });
-  };
+};
 
-  var beer_cache_no=0;
-  function prefetchBeer() {
+function prefetchBeer() {
     var beer_url = "/beers?brewer=" + $('#brewer').val();
 
     /* need to both destroy and use a new name so the old backing store isn't used
+    or use no name (implemented)
     https://github.com/twitter/typeahead.js/issues/41 */
     $('#beer').typeahead('destroy');
 
-    $('#beer').typeahead({
-      beer:'name'+beer_cache_no,
-      prefetch:beer_url
-    });
-    beer_cache_no += 1;
-  };
+    $('#beer').typeahead({ prefetch:beer_url });
+};
 
 
+/*
+    Functions to handle user ratings
+*/
 
 var myRatings = [];
+
 function addRating() {
     myRatings.push( [
         $('#brewer').val(),
         $('#beer').val(),
         $('#rating').val()
         ] );
+
+    if (user != '') { saveData(user); }
+
     printRatings();
 };
+
 function delRating(i) {
     myRatings.splice(i,1);
+
+    if (user != '') { saveData(user); }
+
     printRatings();
 };
+
 function printRatings() {
     if (myRatings.length>0) {
         var ratings_html = "<table class='table' style='font-size:10pt;'>" +
@@ -102,34 +131,68 @@ function printRatings() {
     } else {
         $("#ratings_table").html("");
     }
-  };
+};
 
 
-  function runRecommender() {
-  };
+/*
+    Functions to handle user login/logout and data
+*/
 
-
-  var user = '';
-  function loginUser() {
+var user = '';
+function loginUser() {
     user = $('#user').val();
     if (user != '') {
         var content = "Logged in. " +
-            "<a href='#' onClick='logoutUser();' style='padding-right:10px;'>Not "+user+"?</a> " +
-            "<a href='#' onClick='saveData();' class='btn btn-primary btn-sm'>Save data</a>";
+            "<a href='#' onClick='logoutUser();' style='padding-right:10px;'>Not "+user+"?</a> ";
+            //"<a href='#' onClick='saveData();' class='btn btn-primary btn-sm'>Save data</a>"
         $("#login-status").html(content);
 
-        loadData();
+        // load user data if available
+        $.getJSON('/user?name='+user+'&loaddata=True',
+        function(data) {
+            if (data.success) { 
+                console.log('loaded data for user '+user);
+
+                if (data.dat != undefined) {
+                    myRatings=JSON.parse(data.dat);
+                    printRatings();
+
+                    // also plot markers at top 5 locations and show recommendations if done
+                    if (data.loc != undefined) {
+                        placeMarkers( data.loc.slice(0,5), 10,'green' );
+                    }
+                    if (data.beer != undefined) {
+                        showRecommendations(data.beer.slice(0,10));
+                    }
+                }
+            } else { 
+                console.log('error loading data for user '+user+': '+data.errmsg);
+                if (data.errmsg=='new user' && myRatings.length>0) { 
+                    saveData(); 
+                } else {
+                    console.log('no ratings to save');
+                }
+            }
+        });
     }
-  };
-  function logoutUser() {
+};
+
+function logoutUser() {
     var content = "<input id='user' name='user' size='10' class='typeahead' style='font-size:10pt;' type='text'> " +
                   "<input class='btn btn-primary btn-sm' type='submit' value='Sign In'>";
     $("#login-status").html(content);
 
+    // clear user name and ratings on logout
     user='';
     $("#user").val(user);
-  };
-  function saveData() {
+
+    myRatings=[];
+    printRatings();
+
+    console.log('user logged out');
+};
+
+function saveData() {
     myRatings_json = JSON.stringify(myRatings);
     $.getJSON('/user?name='+user+'&savedata='+myRatings_json, 
     function(data) {
@@ -139,20 +202,47 @@ function printRatings() {
             console.log('error saving user data: '+data.success);
         }
     });
-  };
-  function loadData() {
-    $.getJSON('/user?name='+user, 
-    function(data) {
-        if (data.success) { 
-            console.log('loaded user data: '+data.success);
+};
 
-            if (data.dat != undefined) {
-                myRatings=JSON.parse(data.dat);
-                printRatings();
-            }
-        } else { 
-            console.log('error loading user data: '+data.success);
+
+/*
+    Functions to handle the recommender
+*/
+
+function runRecommender() {
+    document.getElementById('form-canvas').style.visibility='hidden';
+    document.getElementById('recommend-canvas').style.visibility='visible';
+
+    console.log('getting recommendations for user '+user);
+
+    $.getJSON('/user?name='+user+'&recommend=True', function(data) {
+            console.log('got recommendations');
+
+            showRecommendations(data.beer.slice(0,10));
+            placeMarkers( data.loc.slice(0,5), 10,'green' );
         }
-    });
-  };
+    );
+};
 
+function showRecommendations(beer) {
+    // show beer recommendations
+    var content = "<div style='font-size:14px;'><p>The top locations with these beers are shown with <span style='color:green;'>green</span> markers on the map.</p>" +
+                  '<p>Your top recommended beers and predicted ratings are:<ol type=1>';
+    $.each(beer, function() { 
+        content += "<li><a href='"+this.url+"'>"+this.brewery+', '+this.name+'</a> (<i>rating of '+this.prediction+'</i>)</li>'; 
+        });
+    content += '</ol></p></div>';
+    $("#rec-content").html(content);
+
+    document.getElementById('myrec-button').style.visibility='visible';
+    showRecPane();
+}
+
+function showRecPane() {
+    document.getElementById('form-canvas').style.visibility='hidden';
+    document.getElementById('recommend-canvas').style.visibility='visible';
+}
+function showRatPane() {
+    document.getElementById('form-canvas').style.visibility='visible';
+    document.getElementById('recommend-canvas').style.visibility='hidden';
+}

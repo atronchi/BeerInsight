@@ -4,8 +4,8 @@ import numpy as np
 def loadData(fnam):
     with gzip.open(fnam,'rb') as f: return cPickle.load(f)
 
-BA = loadData('recommender/reviews.pklz2')
-RB = loadData('scraper/scrape_ratebeer.pklz')
+BA = loadData('reviews.pklz2')
+RB = loadData('scrape_ratebeer.pklz')
 
 BA_beers = BA['beers']
 RB_beers = np.array([ [i['brewery'],i['name']] for i in RB['beers'] ])

@@ -14,7 +14,7 @@ import scipy.io
 from scipy.optimize import minimize
 import scipy.sparse as sp
 import time
-import ipdb # not use ipdb.set_trace()
+#import ipdb # for ipdb.set_trace()
 
 ''' Outline of procedures:
 
@@ -54,11 +54,23 @@ import ipdb # not use ipdb.set_trace()
 #  You will start by loading the item ratings dataset to understand the
 #  structure of the data.
 #  
+dat_dir = ''
 def loadData(fnam='reviews.pklz2'):
     print 'Loading ratings dataset.\n'
 
+    # search for data files, changes depending on invoking from 
+    #  import app.recommender as rec (i.e. dat_dir='')
+    #    vs.
+    #  import recommender as rec (i.e. dat_dir='app')
+    import os
+    print 'current directory: '+os.getcwd()
+    global dat_dir
+    if os.path.exists('app'):
+        dat_dir='app/'
+        print ' getting data from: '+dat_dir
+
     import gzip,cPickle
-    with gzip.open(fnam,'rb') as f: 
+    with gzip.open(dat_dir+fnam,'rb') as f: 
         BA=cPickle.load(f)
 
     user_list = BA['users']
@@ -90,9 +102,9 @@ def loadUserData(user,d,show=False):
     (num_items,num_users) = d['Y'].shape
 
     # load from disk
-    fnam = '../app/userdata/'+user+'.pklz2'
+    fnam = 'userdata/'+user+'.pklz2'
     import gzip,cPickle,json
-    with gzip.open(fnam,'rb') as f: 
+    with gzip.open(dat_dir+fnam,'rb') as f: 
         udat = cPickle.load(f)
     udat = json.loads(udat['webdat'])
 
@@ -129,7 +141,27 @@ def loadUserData(user,d,show=False):
     #  Add our own ratings to the data matrix
     d['Y'] = sp.hstack((my_ratings, d['Y']),format='csr')
     d['R'] = sp.hstack((myR, d['R']),format='csr')
+    d['user_list'] = np.hstack(('Alex',d['user_list']))
 
+
+    # filter to local and user reviewed items
+    with gzip.open(dat_dir+'match_BA_RB.pklz2','rb') as f: 
+        RB_matches=cPickle.load(f)
+    rows_filt = np.array(sorted(set( [i[0] for i in RB_matches] + list(rows) ))) # local + user
+    R = d['R'][rows_filt,:]
+    cols_filt = np.where( np.array(R.sum(axis=0)).flatten()>0 )[0]
+    R = R[:,cols_filt]
+    Y = d['Y'][rows_filt,:]
+    Y = Y[:,cols_filt]
+
+    # store filtered results
+    d['RB_matches']=RB_matches
+    d['Y']=Y
+    d['R']=R
+    d['user_list']=d['user_list'][cols_filt]
+    d['item_list']=d['item_list'][rows_filt]
+    d['cols_filt']=cols_filt
+    d['rows_filt']=rows_filt
 
 
 
@@ -160,8 +192,8 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     # already should be encoded by the sparsity pattern enforced above
     XThmYR = sparse_mult(X,Theta.T,coords) - Y
 
-    J = 1/2. *(XThmYR.data**2).sum()
-    J = J + Lambda/2.*( (np.array(Theta)**2).sum() + (np.array(X)**2).sum() )
+    Jerr = 1/2. *(XThmYR.data**2).sum()
+    J = Jerr + Lambda/2.*( (np.array(Theta)**2).sum() + (np.array(X)**2).sum() )
 
     X_grad = XThmYR*Theta + Lambda*X
     Theta_grad = XThmYR.T*X + Lambda*Theta
@@ -208,7 +240,7 @@ def normalizeRatings(d):
     nrev = np.array( R.sum(axis=1) ).flatten()
     sumrev = np.array( Y.sum(axis=1) ).flatten()
 
-    Ymean = sumrev / nrev
+    Ymean = sumrev / nrev # average review for each beer
     d['Ymean'] = Ymean
     d['Ynorm'] = sp.coo_matrix(
         (Y.tocoo().data-Ymean[Rcoords[0]],
@@ -284,19 +316,14 @@ def predict(d,show=False,
 
     # unpack parameters
     item_list = d['item_list']
+    R = d['R']
+    Y = d['Y']
     X = d['X']
     Theta = d['Theta']
     Ymean = d['Ymean']
-    Y = d['Y']
-    R = d['R']
-    Rcoo = sp.coo_matrix(R)
-    Rcoords = (Rcoo.row,Rcoo.col)
-
-    # build shapes arrays
     (num_items,num_users) = Y.shape
-    num_features = d['Theta'].shape
-    shapes = (num_users,num_items,num_features,Rcoords)
 
+    # calculate predictions
     pcoords = (
                np.array( range(num_items) ),
                predict_user + np.zeros(num_items,dtype='int')
@@ -304,14 +331,19 @@ def predict(d,show=False,
     p = sparse_mult( X,Theta.T, pcoords ).tocsr()
     my_predictions = np.array(p[:,predict_user].todense()).flatten() + Ymean
 
+    # filter out reviewed beers
+    new_recs = np.where( np.array(R[:,0].todense()).flatten()==0 )[0] # e.g. beers not reviewed
+    my_predictions = np.array(list(enumerate(my_predictions)))[ new_recs ]
+    d['rows_filt_new'] = d['rows_filt'][new_recs]
+
     ix = [i[0] for i in sorted(
-        enumerate(my_predictions), 
-        key=lambda x:x[1], 
+        enumerate(my_predictions),
+        key=lambda x:x[1][1], 
         reverse=True
         )]
 
     if show:
-        print '\nTop recommendations for you:'
+        print 'Top recommendations for you:'
         for i in range(10):
             j = ix[i]
             print 'Predicting rating {0} for item {1}'.format(
@@ -322,26 +354,77 @@ def predict(d,show=False,
     d['predictions'] = my_predictions
 
 
+def findBestLocations(d):
+    import gzip,cPickle
+    # this loads {'area_url':url,'locations':locations,'beers':beers}
+
+    with gzip.open(dat_dir+'scrape_ratebeer.pklz','rb') as f: RB=cPickle.load(f)
+    with gzip.open(dat_dir+'match_BA_RB.pklz2','rb') as f: matches=cPickle.load(f) 
+    # set(matches) is smaller due to bad matches
+    
+    # match BA predictions to the RB beers
+    user_beers = RB['beers']
+    for i in range(len(matches)):
+        idx = np.where( matches[i][0] == d['rows_filt_new'] )[0]
+        #print i,idx,matches[i][0]
+        if len(idx)>0:
+            user_beers[i]['prediction'] = d['predictions'][idx[0]][1]
+
+    # match each beer in each location to a BA prediction
+    urls = np.array([u['url'] for u in user_beers])
+    user_loc = RB['locations']
+    for l in user_loc:
+        # assign beer predictions
+        for b in l['beers']:
+            idx = np.where( urls==b['item']['url'] )[0]
+            if len(idx)>0 and ('prediction' in user_beers[idx]):
+                b['item']['prediction'] = user_beers[idx]['prediction']
+            else: # define prediction of zero for already reviewed beers or beers without match
+                b['item']['prediction'] = 0.
+
+        # sort beers descending by prediction
+        l['beers'].sort( key=lambda x:x['item']['prediction'],reverse=True )
+
+        # define location prediction as sum of top three beer predictions
+        if len(l['beers'])>=3:
+            l['prediction'] = np.sum( [i['item']['prediction'] for i in l['beers']][0:3] )
+        else: # or all beer predictions if less than three
+            l['prediction'] = np.sum( [i['item']['prediction'] for i in l['beers']] )
+
+    # sort beers and locations descending by prediction
+    user_beers.sort( key=lambda x:x['prediction'],reverse=True )
+    user_loc.sort( key=lambda x:x['prediction'],reverse=True )
+
+    d['beers'] = user_beers
+    d['locations'] = user_loc
+
+
 def saveUserData(user,d):
     # first load existing from disk
-    fnam = '../app/userdata/'+user+'.pklz2'
+    fnam = 'userdata/'+user+'.pklz2'
     import gzip,cPickle,json
-    with gzip.open(fnam,'rb') as f: 
+    with gzip.open(dat_dir+fnam,'rb') as f: 
         udat = cPickle.load(f)
 
-    # add to dict
-    udat['predictions'] = d['predictions']
+    # add predictions
+    udat['beers'] = d['beers']
+    udat['locations'] = d['locations']
 
     # save
-    with gzip.open(fnam,'wb') as f: 
+    with gzip.open(dat_dir+fnam,'wb') as f: 
         cPickle.dump(udat,f,protocol=2)
 
 
-def run():
+def run(user):
+    show = False
+
     d = loadData()
-    loadUserData(user,d,show=True)
-    normalizeRatings(d)
+    loadUserData(user,d,show=show)
     train(d)
-    predict(d,show=True)
+    predict(d,show=show)
+    findBestLocations(d)
     saveUserData(user,d)
+    
+    return (d['beers'],d['locations'])
+
 

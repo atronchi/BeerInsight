@@ -9,7 +9,7 @@
       body { height: 100%; margin: 0; padding: 0 }
       #map-canvas { width:100%; height:100%; z-index:0; }
       #map-canvas img { width:auto; display:inline; max-width:none; line-height:normal; }
-      #form-canvas { 
+      .ucanvas { 
         z-index:10; 
         position:absolute; top:10px; left:30px; 
         background-color:rgba(0,0,0,0.9);
@@ -18,7 +18,7 @@
         -webkit-box-shadow: 10px 10px 15px rgba(0,0,0,.7);
         box-shadow: 10px 10px 15px rgba(0,0,0,.7);
       }
-      #form-canvas .closer { color:#fff; position:absolute; top:10px; right:10px; }
+      .ucanvas .closer { color:#fff; position:absolute; top:10px; right:10px; }
     </style>
 
     <script type="text/javascript"
@@ -34,12 +34,13 @@
 {% block content %}
     <div id="map-canvas"></div>
 
-    <div id="form-canvas" class="jumbotron" style="overflow:auto; max-height:75%;">
+    <div id="form-canvas" class="jumbotron ucanvas" style="overflow:auto; max-height:75%;">
         <div class='closer btn'>
             <form action="javascript:loginUser();" method="post" name="login_form">
                 {{form.hidden_tag()}}
                 <span id="login-status" style='font-size:10pt;'></span>
-                <a href='#' style='padding-left:10px;' onClick="document.getElementById('form-canvas').style.visibility='hidden';">X</a>
+                <a href='#' style='padding-left:10px;' alt='close this window'
+                   onClick="document.getElementById('form-canvas').style.visibility='hidden';">X</a>
             </form>
         </div>
         <form action="javascript:addRating();" method="post" name="rating_form">
@@ -50,7 +51,7 @@
                 <input id="brewer" name="brewer" size="20" type="text" class="typeahead" value="Brewer" onblur="prefetchBeer();"> 
                 <input id="beer" name="beer" size="20" type="text" class="typeahead" value="Beer"> 
                 <input id="rating" name="rating" size="1" type="text" class="typeahead" value="10">
-                <input class="btn btn-primary" type="submit" value="O" style='visibility:hidden;'>
+                <input class="btn btn-primary btn-xs" type="submit" value="O" style='visibility:hidden;'>
                 <!-- <a href='#' onClick='addRating();' class="btn btn-primary">Submit rating</a> -->
             </p>
             <div id='ratings_table'></div>
@@ -60,10 +61,31 @@
         </form>
     </div>
 
+
+    <div id="recommend-canvas" class="jumbotron ucanvas" style="overflow:auto; max-height:75%; visibility:hidden;">
+        <div class='closer btn'>
+            <a href='#' style='padding-left:10px;' alt='close this window'
+               onClick="document.getElementById('recommend-canvas').style.visibility='hidden';">X</a>
+        </div>
+
+        <div id='rec-content'>
+            <p> Looking for some beers you will like.<br>
+                This can take a couple minutes. <img src='static/img/spinning-wheel.gif'>
+                <img src='static/img/beerinsight-logo-lg.png' style='max-height:25%;'>
+            </p>
+        </div>
+    </div>
+
+
+    <div class='btn btn-primary' style='position:absolute; bottom:60px; left:20px; background:rgba(0,0,255,.9); border:0; visibility:hidden;' id='myrec-button'>
+        <a href='#' style='color:#fff;decoration:none;' onClick="showRecPane();">
+            My recommendations
+        </a>
+    </div>
+
     <div class='btn btn-primary' style='position:absolute; bottom:20px; left:20px; background:rgba(0,0,255,.9); border:0;'>
-        <a href='#' style='color:#fff;decoration:none;'
-          onClick="document.getElementById('form-canvas').style.visibility='visible';">
-            My reviews
+        <a href='#' style='color:#fff;decoration:none;' onClick="showRatPane();">
+            My ratings
         </a>
     </div>
 {% endblock %}
