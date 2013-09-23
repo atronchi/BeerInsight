@@ -1,12 +1,11 @@
 MVP completed.
 
-setup typeahead to tokenize against all words instead of whole names, also check for case sensitivity
+recommender validation - compare algorithm with netflix challenge
 integrate sparse_mult to module for pull request to scipy
-add google analytics
+setup typeahead to tokenize against all words instead of whole names, also check for case sensitivity
 
 
 Extras:
-    recommender validation - compare algorithm with netflix challenge
     clean bad matches/dupes between BA and RB
     try speeding up recommender by filtering users to 1000 closest pearson correlations to user
 

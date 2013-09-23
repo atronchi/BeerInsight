@@ -4,9 +4,9 @@ from app import app # this should come after the other app imports
 import os
 import cPickle,gzip,json
 
-# load data, one or more of these takes a damn long time
+# load data
 with gzip.open('app/scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
-with gzip.open('app/typeahead_prefetch.pklz2','rb') as f: tpf=cPickle.load(f)
+with gzip.open('app/typeahead_prefetch.pklz2','rb') as f: tpf=cPickle.load(f) # takes a while. put into SQlite db for faster load?
 with gzip.open('app/gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 
 
