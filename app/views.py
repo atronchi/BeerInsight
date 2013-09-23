@@ -10,6 +10,11 @@ with gzip.open('app/typeahead_prefetch.pklz2','rb') as f: tpf=cPickle.load(f)
 with gzip.open('app/gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 
 
+@app.route('/robots.txt')
+def robots():
+    with file('robots.txt') as f: return f.read()
+
+
 @app.route('/')
 @app.route('/home')
 def home():
