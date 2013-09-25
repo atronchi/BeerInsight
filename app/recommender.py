@@ -147,12 +147,17 @@ def loadUserData(user,d,show=False):
     # filter to local and user reviewed items
     with gzip.open(dat_dir+'match_BA_RB.pklz2','rb') as f: 
         RB_matches=cPickle.load(f)
-    rows_filt = np.array(sorted(set( [i[0] for i in RB_matches] + list(rows) ))) # local + user
+
+    rows_filt = np.array(sorted(set( [i[0] for i in RB_matches] + list(rows) ))) # local beers + user reviewed beers
     R = d['R'][rows_filt,:]
-    cols_filt = np.where( np.array(R.sum(axis=0)).flatten()>0 )[0]
-    R = R[:,cols_filt]
     Y = d['Y'][rows_filt,:]
+
+    user_nrev = np.array(R.sum(axis=0)).flatten()
+    cols_filt = np.where( user_nrev>=0 )[0] # filter columns (users) with no reviews
+    R = R[:,cols_filt]
     Y = Y[:,cols_filt]
+
+    # also filter users with more than 100 reviews
 
     # store filtered results
     d['RB_matches']=RB_matches
@@ -171,7 +176,9 @@ def loadUserData(user,d,show=False):
 #  that we trained on that. Specifically, you should complete the code in 
 #  cofiCostFunc.m to return J.
 #
-def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
+from sparse_mult import sparse_mult
+
+def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False, validate=False):
     num_users,num_items,num_features,coords = shapes
 
     # reshape params into X and Theta
@@ -193,38 +200,32 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False):
     XThmYR = sparse_mult(X,Theta.T,coords) - Y
 
     Jerr = 1/2. *(XThmYR.data**2).sum()
-    J = Jerr + Lambda/2.*( (np.array(Theta)**2).sum() + (np.array(X)**2).sum() )
 
-    X_grad = XThmYR*Theta + Lambda*X
-    Theta_grad = XThmYR.T*X + Lambda*Theta
+    if validate: # return only validation error
+        Jval = np.sqrt(Jerr*2./XThmYR.nnz) # RMS error
+        return Jval
 
-    if debug:
-        print 'X = \n{0}'.format(X)
-        print 'Theta = \n{0}'.format(Theta)
-        print 'X_grad = \n{0}'.format(X_grad)
-        print 'Theta_grad = \n{0}'.format(Theta_grad)
+    else:
+        # regularize
+        J = Jerr + Lambda/2.*( (np.array(Theta)**2).sum() + (np.array(X)**2).sum() )
 
-    # Unroll gradients
-    grad = np.hstack((
-        np.array(X_grad).flatten('F'),
-        np.array(Theta_grad).flatten('F')
-        ))
-    J = float(J)
-    return (J,grad)
+        # gradients
+        X_grad = XThmYR*Theta + Lambda*X
+        Theta_grad = XThmYR.T*X + Lambda*Theta
 
-from sparse_mult import sparse_mult
-'''
-# cython-ized version of sparse_mult: works fast, actually sparse
-def sparse_mult(a, b, coords):
-    # inspired by handy snippet from 
-    # http://stackoverflow.com/questions/13731405/calculate-subset-of-matrix-multiplication
-    #a,b are np.ndarrays
-    from sparse_mult_c import sparse_mult_c
-    rows, cols = coords
-    C = np.zeros(rows.shape[0])
-    sparse_mult_c(a,b,rows,cols,C)
-    return sp.coo_matrix( (C,coords), (a.shape[0],b.shape[1]) )
-'''
+        if debug:
+            print 'X = \n{0}'.format(X)
+            print 'Theta = \n{0}'.format(Theta)
+            print 'X_grad = \n{0}'.format(X_grad)
+            print 'Theta_grad = \n{0}'.format(Theta_grad)
+
+        # Unroll gradients
+        grad = np.hstack((
+            np.array(X_grad).flatten('F'),
+            np.array(Theta_grad).flatten('F')
+            ))
+        J = float(J)
+        return (J,grad)
 
 
 ## ================== Normalize Item Ratings ====================
@@ -306,6 +307,32 @@ def train(d,
         ))
     d['Lambda'] = Lambda
 
+
+# Calculate standard error
+def stdError(d):
+    # unpack parameters
+    Lambda = d['Lambda']
+    Y = d['Y']
+    Ynorm = d['Ynorm']
+    R = d['R']
+    m,n = Y.shape
+    Rcoo = sp.coo_matrix(R)
+    Rcoords = (Rcoo.row,Rcoo.col)
+    X = d['X']
+    Theta = d['Theta']
+
+    # build shapes arrays
+    (num_items,num_users) = Y.shape
+    num_features = d['Theta'].shape[1]
+    shapes = (num_users,num_items,num_features,Rcoords)
+
+    pars = np.hstack((
+        np.array(X).flatten('F'), 
+        np.array(Theta).flatten('F') 
+        ))
+
+    err = cofiCostFunc( pars,Ynorm,R,shapes,Lambda,validate=True )
+    return err
 
 
 ## ================== Part 8: Recommendation for you ====================

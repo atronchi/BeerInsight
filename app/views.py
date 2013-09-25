@@ -4,10 +4,6 @@ from app import app # this should come after the other app imports
 import os
 import cPickle,gzip,json
 
-# load data
-with gzip.open('app/scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
-with gzip.open('app/typeahead_prefetch.pklz2','rb') as f: tpf=cPickle.load(f) # takes a while. put into SQlite db for faster load?
-with gzip.open('app/gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 
 
 @app.route('/robots.txt')
@@ -42,19 +38,17 @@ from flask import flash, redirect
 from forms import LoginForm,UserInputForm
 import os,sys
 
+with gzip.open('app/scrape_ratebeer.pklz','rb') as f: loc_data=cPickle.load(f)
 @app.route('/rb_sanjose')
 def rb_sanjose():
     return json.dumps(loc_data['locations'])
 
+import typeahead_prefetch_queries as tpq
 @app.route('/brewers')
 def brewers():
     q = request.args.get('q','')
     print 'getting brewers like '+q
-    if q=='':
-        return json.dumps(tpf['brewer_prefetch'])
-    else:
-        BA_brewers = list(set( [b for b in tpf['brewers_n_beers'].keys() if b.startswith(q)] ))
-        return json.dumps(BA_brewers)
+    return json.dumps(tpq.fetch_brewers(q))
 
 @app.route('/beers')
 def beers():
@@ -62,11 +56,8 @@ def beers():
     q = request.args.get('q','')
 
     print 'getting beers for brewer: '+brewer
-    if brewer in tpf['brewers_n_beers'].keys():
-        BA_beers = list(set( [b for b in tpf['brewers_n_beers'][brewer] if b.startswith(q)] ))
-    else:
-        BA_beers = []
-    return json.dumps(BA_beers)
+    return json.dumps(tpq.fetch_beers(brewer,q))
+
 
 @app.route('/user')
 def user():
@@ -128,6 +119,7 @@ def user():
         return json.dumps({'success':False,'errmsg':'no username specified'})
 
 
+with gzip.open('app/gapi_key.pklz','rb') as f: gapi=cPickle.load(f)
 @app.route('/maps', methods=['GET','POST'])
 def maps():
     return render_template("maps.html",footer_color='black',
