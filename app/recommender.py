@@ -141,7 +141,7 @@ def loadUserData(user,d,show=False):
     #  Add our own ratings to the data matrix
     d['Y'] = sp.hstack((my_ratings, d['Y']),format='csr')
     d['R'] = sp.hstack((myR, d['R']),format='csr')
-    d['user_list'] = np.hstack(('Alex',d['user_list']))
+    d['user_list'] = np.hstack((user,d['user_list']))
 
 
     # filter to local and user reviewed items
@@ -149,13 +149,13 @@ def loadUserData(user,d,show=False):
         RB_matches=cPickle.load(f)
 
     rows_filt = np.array(sorted(set( [i[0] for i in RB_matches] + list(rows) ))) # local beers + user reviewed beers
-    R = d['R'][rows_filt,:]
     Y = d['Y'][rows_filt,:]
+    R = d['R'][rows_filt,:]
 
     user_nrev = np.array(R.sum(axis=0)).flatten()
     cols_filt = np.where( user_nrev>=0 )[0] # filter columns (users) with no reviews
-    R = R[:,cols_filt]
     Y = Y[:,cols_filt]
+    R = R[:,cols_filt]
 
     # also filter users with more than 100 reviews
 

@@ -54,7 +54,6 @@ def brewers():
 def beers():
     brewer = request.args.get('brewer','')
     q = request.args.get('q','')
-
     print 'getting beers for brewer: '+brewer
     return json.dumps(tpq.fetch_beers(brewer,q))
 
