@@ -40,8 +40,9 @@ function placeMarkers(data,markerSize,markerColor) {
               if (this.beers.length>2) { beercount=3; } else { beercount=this.beers.length; }
               contentString += 'top recommended beers: <ol type=1>';
               for (var i=0; i<beercount; i++) {
+                  rat = this.beers[i].item.prediction;
                   contentString += '<li><a href="'+this.beers[i].item.url+'">'+this.beers[i].item.brewery+', '+this.beers[i].item.name+'</a><br>' +
-                                   this.beers[i].item.style+', predicted rating='+this.beers[i].item.prediction.toFixed(1)+', ' +
+                                   this.beers[i].item.style+', predicted rating='+rat.toFixed(1)+', ' +
                                    '<i>last seen '+this.beers[i].date+'</i></li>';
               }
               contentString += '</ol>';
@@ -243,7 +244,7 @@ function runRecommender() {
 function showRecommendations(beer) {
     var content = "<div style='font-size:14px;'><p>The top locations with these beers are shown with <span style='color:green;'>green</span> markers on the map.</p>" +
                   '<p>Your top recommended beers and predicted ratings are:<ol type=1>';
-    $.each(beer, function() { 
+    $.each(beer, function() {
         content += "<li><a href='"+this.url+"'>"+this.brewery+', '+this.name+'</a> (<i>rating of '+this.prediction.toFixed(1)+'</i>)</li>'; 
         });
     content += '</ol></p></div>';

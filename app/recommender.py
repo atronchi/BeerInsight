@@ -390,14 +390,19 @@ def findBestLocations(d):
     with gzip.open(dat_dir+'scrape_ratebeer.pklz','rb') as f: RB=cPickle.load(f)
     with gzip.open(dat_dir+'match_BA_RB.pklz2','rb') as f: matches=cPickle.load(f) 
     # set(matches) is smaller due to bad matches
-    
+   
+    # unconstrained recommendations will have drifted so use these to renormalize 
+    p = np.array([i[1] for i in d['predictions']])
+    pmx,pmn = p.max(),p.min()
+
     # match BA predictions to the RB beers
     user_beers = RB['beers']
     for i in range(len(matches)):
         idx = np.where( matches[i][0] == d['rows_filt_new'] )[0]
         #print i,idx,matches[i][0]
         if len(idx)>0:
-            user_beers[i]['prediction'] = d['predictions'][idx[0]][1]
+            # normalize predictions to a scale of 1-10
+            user_beers[i]['prediction'] = 1+9*(d['predictions'][idx[0]][1]-pmn )/(pmx-pmn)
 
     # match each beer in each location to a BA prediction
     urls = np.array([u['url'] for u in user_beers])

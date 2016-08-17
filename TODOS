@@ -1,8 +1,24 @@
-MVP completed.
+BUGS:
+When a user has entered reviews before entering their username, previously saved beers should not be clobbered by the new list, they should be merged
+User ratings should be restricted to 1-10, some users enter 0 which is ignored
+Still returning doubles sometimes
 
+'Wells & Young's Ltd' and 'Speakeasy Ales & Lagers' don't seem to pass beers to typeahead for some reason; suspect ampersand is screwing things up...
+When beer is 'Death & Taxes Ale' on recommend: Cannot call method slice of undefined bi.js:236, then recommender error...
+possible solution:
+http://www.digitalbart.com/blog/jquery-and-urlencode/
+or http://stackoverflow.com/questions/6544564/url-encode-a-string-in-jquery-for-an-ajax-request
+in js: encodeURI(urlstring)
+http://stackoverflow.com/questions/3563126/url-encoding-decoding-with-python
+in python: urllib2.unquote(urlstring).decode("utf8")
+
+
+Updates:
 recommender validation - compare algorithm with netflix challenge
 integrate sparse_mult to module for pull request to scipy
 setup typeahead to tokenize against all words instead of whole names, also check for case sensitivity
+
+Add option to dislike an entire brewery
 
 
 Extras:
