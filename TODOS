@@ -1,3 +1,13 @@
+REWRITE?
+Matching BA/RB was a PITA and RB has more/better data, so let's write a new scraper to continuously crawl RB for all their data!
+- beers
+- users
+- reviews
+- breweries
+- locations
+
+
+
 BUGS:
 When a user has entered reviews before entering their username, previously saved beers should not be clobbered by the new list, they should be merged
 User ratings should be restricted to 1-10, some users enter 0 which is ignored
