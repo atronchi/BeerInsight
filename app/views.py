@@ -85,10 +85,27 @@ def user():
                     print 'opening '+fnam
                     with gzip.open(fnam,'rb') as f: dat=cPickle.load(f)
                     if 'beers' in dat.keys() and 'locations' in dat.keys():
+                        # remove duplicate matches
+                        user_beers = [dat['beers'][0]]
+                        for b in dat['beers'][1:]:
+                            if b['url'] not in [u['url'] for u in user_beers]:
+                                user_beers.append(b)
+                            if len(user_beers)==10: break
+                        user_loc = []
+                        for l in dat['locations']:
+                            loc_beers = [l['beers'][0]]
+                            for b in l['beers'][1:]:
+                                if b['item']['url'] not in [u['item']['url'] for u in loc_beers]:
+                                    loc_beers.append(b)
+                                if len(loc_beers)==3: break
+                            l['beers']=loc_beers
+                            user_loc.append(l)
+                            if len(user_loc)==5: break
+
                         return json.dumps({'success':True,
                                            'dat':dat['webdat'],
-                                           'beer':dat['beers'],
-                                           'loc':dat['locations']
+                                           'beer':user_beers,
+                                           'loc':user_loc
                                           })
                     else:
                         return json.dumps({'success':True,
