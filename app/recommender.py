@@ -56,14 +56,14 @@ import time
 #  
 dat_dir = ''
 def loadData(fnam='reviews.pklz2'):
-    print 'Loading ratings dataset.\n'
+    print 'Loading ratings dataset...\n'
 
     # search for data files, changes depending on invoking from 
     #  import app.recommender as rec (i.e. dat_dir='')
     #    vs.
     #  import recommender as rec (i.e. dat_dir='app')
     import os
-    print 'current directory: '+os.getcwd()
+    #print 'current directory: '+os.getcwd()
     global dat_dir
     if os.path.exists('app'):
         dat_dir='app/'
@@ -95,7 +95,7 @@ def loadData(fnam='reviews.pklz2'):
 #  Before we train the collaborative filtering model, we will first
 #  add ratings that correspond to a new user that we just observed.
 #
-def loadUserData(user,d,show=False):
+def loadUserData(user,d,show=False,validate=False):
     # unpack
     brewer_list = np.array([i[0] for i in d['item_list']])
     beer_list = np.array([i[1] for i in d['item_list']])
@@ -152,12 +152,12 @@ def loadUserData(user,d,show=False):
     Y = d['Y'][rows_filt,:]
     R = d['R'][rows_filt,:]
 
-    user_nrev = np.array(R.sum(axis=0)).flatten()
-    cols_filt = np.where( user_nrev>=0 )[0] # filter columns (users) with no reviews
+    user_nrev = np.array(R.sum(axis=0), dtype=int).flatten()
+    cols_filt = np.where( user_nrev>1 )[0] # filter out columns (users) with less than 2 reviews
     Y = Y[:,cols_filt]
     R = R[:,cols_filt]
 
-    # also filter users with more than 100 reviews
+    # also filter users with more than 100 reviews?
 
     # store filtered results
     d['RB_matches']=RB_matches
@@ -202,7 +202,7 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False, validate=False):
     Jerr = 1/2. *(XThmYR.data**2).sum()
 
     if validate: # return only validation error
-        Jval = np.sqrt(Jerr*2./XThmYR.nnz) # RMS error
+        Jval = np.sqrt(Jerr*2./R.nnz) # RMS error
         return Jval
 
     else:
@@ -231,7 +231,7 @@ def cofiCostFunc(params, Y,R, shapes, Lambda, debug=False, validate=False):
 ## ================== Normalize Item Ratings ====================
 #
 def normalizeRatings(d):
-    print '\nNormalizing ratings...'
+    print 'Normalizing ratings...\n'
 
     # unpack parameters
     Y = d['Y']
@@ -252,30 +252,27 @@ def normalizeRatings(d):
         ).tocsr()
 
 
-
 ## ================== Training Item Ratings ====================
 #
 def train(d,
+    Y = None, R = None,
     Lambda = 10, # tunable
     num_features = 10 # tunable
     ):
 
-    if not 'Ynorm' in d.keys(): normalizeRatings(d)
-
-    # unpack parameters
-    Y = d['Y']
-    Ynorm = d['Ynorm']
-    R = d['R']
-    m,n = Y.shape
-    Rcoo = sp.coo_matrix(R)
-    Rcoords = (Rcoo.row,Rcoo.col)
+    if Y==None or R==None:
+        print 'Must pass Y and R'
+        return
 
     # build shapes arrays
     (num_items,num_users) = Y.shape
+    Rcoo = sp.coo_matrix(R)
+    Rcoords = (Rcoo.row,Rcoo.col)
     shapes = (num_users,num_items,num_features,Rcoords)
 
-
-    print '\nTraining collaborative filtering...\n'
+    print 'Training collaborative filtering with Lambda={0} and num_features={1}...\n'.format(
+        Lambda,num_features
+        )
 
     # Set Initial Parameters (Theta, X), regularization, and costFn
     X = np.random.randn(num_items, num_features)
@@ -284,19 +281,19 @@ def train(d,
         np.array(X).flatten('F'), 
         np.array(Theta).flatten('F') 
         ))
-    costFn = lambda t: cofiCostFunc( t,Ynorm,R,shapes,Lambda )
+    costFn = lambda t: cofiCostFunc( t,Y,R,shapes,Lambda )
 
     # Train
     result = minimize(costFn, initial_parameters,
         method='L-BFGS-B', jac=True, #callback=cb, 
-        options={'disp':True,'maxiter':100}
+        options={'disp':False,'maxiter':100}
         )
 
     print 'Recommender system learning completed.\n'
 
     # Unfold the returned theta back into X and Theta
     params = result['x']
-    d['cost'] = result['fun']
+    d['cost'] = cofiCostFunc( params,Y,R,shapes,Lambda,validate=True )
     d['X'] = np.matrix(np.reshape(
         params[:num_items*num_features], 
         (num_items, num_features), order='F'
@@ -306,6 +303,7 @@ def train(d,
         (num_users, num_features), order='F'
         ))
     d['Lambda'] = Lambda
+    return params
 
 
 # Calculate standard error
@@ -315,7 +313,6 @@ def stdError(d):
     Y = d['Y']
     Ynorm = d['Ynorm']
     R = d['R']
-    m,n = Y.shape
     Rcoo = sp.coo_matrix(R)
     Rcoords = (Rcoo.row,Rcoo.col)
     X = d['X']
@@ -449,11 +446,137 @@ def run(user):
 
     d = loadData()
     loadUserData(user,d,show=show)
-    train(d)
+    normalizeRatings(d)
+    pars=train(d,
+        Y = d['Ynorm'],
+        R = d['R'],
+        Lambda = 10,
+        num_features = 10
+        )
     predict(d,show=show)
     findBestLocations(d)
     saveUserData(user,d)
     
     return (d['beers'],d['locations'])
 
+
+def validate(d=None):
+    show = False
+
+    if d==None:
+        d = loadData()
+        normalizeRatings(d)
+        Y_tra,R_tra,Y_val,R_val = val_split(d)   
+    else:
+        Y_tra,R_tra,Y_val,R_val = d['val_split']
+
+    print 'Validating...'
+    lams = np.array([0.1, 0.3, 1, 3, 10, 30, 100, 300, 1000])
+    cost_tra = []
+    cost_val = []
+    for l in lams:
+        params = train(d,
+            Y = Y_tra, 
+            R = R_tra,
+            Lambda = l,
+            num_features = 10
+            )
+
+        Rcoo = sp.coo_matrix(d['R'])
+        Rcoords = (Rcoo.row,Rcoo.col)
+        (num_items,num_users) = d['Y'].shape
+        num_features = d['Theta'].shape[1]
+        shapes = (num_users,num_items,num_features,Rcoords)
+
+        cost_tra.append( cofiCostFunc( params,Y_tra,R_tra,shapes,l,validate=True ) )
+        cost_val.append( cofiCostFunc( params,Y_val,R_val,shapes,l,validate=True ) )
+
+    cost_tra = np.array(cost_tra)
+    cost_val = np.array(cost_val)
+    d['validations'] = (lams,cost_tra,cost_val)
+
+    import gzip,cPickle
+    with gzip.open('valdat.pklz','wb') as f: cPickle.dump(d,f)
+
+    return d
+
+def plotValidation(d):
+    lams,cost_tra,cost_val = d['validations']
+    import pylab as pl
+    pl.figure()
+    pl.hold(True)
+    pl.semilogx(lams,cost_tra,'b-',lams,cost_val,'g-')
+    pl.xlabel('regularization parameter')
+    pl.ylabel('cost')
+    pl.title('regularization learning curves')
+    pl.legend(('training','validation'))
+
+def val_split(d):
+    from random import shuffle
+
+    # needs Y,R
+    Y = d['Ynorm']
+    R = d['R']
+    user_nrev = np.array(R.sum(axis=0), dtype=int).flatten()
+
+    # split into training and validation sets
+    print 'Splitting data into training and validation sets...\n'
+
+    # select users for validation set only for > nrevmin reviews
+    nrevmin = 15
+    val_cols = np.where( user_nrev >  nrevmin )[0]
+    tra_cols = np.where( user_nrev <= nrevmin )[0]
+    unrvc_int = np.array(user_nrev[val_cols]*0.7, dtype=int)
+    n_tra = unrvc_int.sum() + user_nrev[tra_cols].sum()
+    n_val = (user_nrev[val_cols] - unrvc_int).sum()
+
+    # check that ntra + nval == nnz
+    #print 'n_tra+n_val={0}, nnz={1}'.format(n_tra+n_val,Y.nnz)
+    #print 'Training set is {0}% of data'.format(float(n_tra)/(n_val+n_tra))
+    #print 'Validation set is {0}% of data'.format(float(n_val)/(n_val+n_tra))
+
+    # pre-allocate for speed
+    rows_tra = np.zeros(n_tra, dtype=int)
+    cols_tra = np.zeros(n_tra, dtype=int)
+    cols_val = np.zeros(n_val, dtype=int)
+    rows_val = np.zeros(n_val, dtype=int)
+    it,iv = 0,0
+
+    # split validation and training data from columns/users with enough reviews
+    for i in enumerate(val_cols):
+        sep,col = unrvc_int[i[0]], i[1]
+        row = np.where( np.array(R[:,col].todense()).flatten()==1 )[0]
+        shuffle(row)
+        row_tra = row[:sep]
+        row_val = row[sep:]
+        nt,nv = len(row_tra),len(row_val)
+
+        cols_tra[it:it+nt] = col
+        rows_tra[it:it+nt] = row_tra
+        it += nt
+
+        cols_val[iv:iv+nv] = col
+        rows_val[iv:iv+nv] = row_val
+        iv += nv
+
+    # complete training data
+    for col in tra_cols:
+        nt = user_nrev[col]
+        row = np.where( np.array(R[:,col].todense()).flatten()==1 )[0]
+        cols_tra[it:it+nt] = col
+        rows_tra[it:it+nt] = row
+        it += nt
+
+    Y_tra = sp.coo_matrix( (np.array(Y[rows_tra,cols_tra]).flatten(), (rows_tra,cols_tra)), shape=Y.shape ).tocsr()
+    R_tra = sp.csr_matrix(sp.csr_matrix(Y_tra,dtype=bool), dtype=float)
+
+    Y_val = sp.coo_matrix( (np.array(Y[rows_val,cols_val]).flatten(), (rows_val,cols_val)), shape=Y.shape ).tocsr()
+    R_val = sp.csr_matrix(sp.csr_matrix(Y_val,dtype=bool), dtype=float) 
+
+    d['val_split'] = (Y_tra,R_tra,Y_val,R_val)
+
+    import gzip,cPickle
+    with gzip.open('valdat.pklz','wb') as f: cPickle.dump(d,f)
+
+    return (Y_tra,R_tra,Y_val,R_val)
 

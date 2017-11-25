@@ -6,6 +6,7 @@ setup typeahead to tokenize against all words instead of whole names, also check
 
 
 Extras:
+    update geocode to mapquest api for speed increase
     clean bad matches/dupes between BA and RB
     try speeding up recommender by filtering users to 1000 closest pearson correlations to user
 

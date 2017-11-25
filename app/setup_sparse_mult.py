@@ -8,3 +8,4 @@ setup(
     cmdclass = {'build_ext': build_ext},
     ext_modules = [Extension("sparse_mult", ["sparse_mult.pyx"])]
 )
+
